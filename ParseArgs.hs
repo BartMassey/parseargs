@@ -165,10 +165,22 @@ parseArgs argd argv = do
              (hPutStr h " [--] ...")
       hPutStrLn h ""
       --- argument lines
-      
+      let lhs = (map arg_string args) ++
+                (map argName posn_args) ++
+                (map argName opt_args)
+      let n = maximum (map length lhs)
+      mapM_ (put_line n arg_string) args
+      mapM_ (put_line n argName) posn_args
+      mapM_ (put_line n argName) opt_args
       --- bail
       hPutStrLn h ""
       error ("usage error: " ++ msg)
       where
         format_posn :: (Ord a) => String -> String -> Arg a -> String
         format_posn l r a =  " " ++ l ++ (argName a) ++ r
+        put_line :: (Ord a) => Int -> (Arg a -> String) -> Arg a -> IO ()
+        put_line n f a =
+            hPutStrLn h ("  " ++ (pad_width n (f a)) ++ "  " ++ argDesc a)
+        pad_width :: Int -> String -> String
+        pad_width n s =
+            s ++ (replicate (n - (length s)) ' ')
