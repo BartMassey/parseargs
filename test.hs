@@ -6,6 +6,7 @@ import System.Environment
 
 data Options =
     OptionFlag |
+    OptionFlagInt |
     OptionFixed |
     OptionOptional
     deriving (Ord, Eq)
@@ -16,7 +17,13 @@ argd = ArgDesc { argDescArgs = [Arg { argIndex = OptionFlag,
                                       argName = "flag",
                                       argAbbr = Just 'f',
                                       argExprName = Nothing,
-                                      argDesc = "Test flag" }],
+                                      argDesc = "Test flag" },
+                                Arg { argIndex = OptionFlagInt,
+                                      argAtype = ArgAtypeInt,
+                                      argName = "intflag",
+                                      argAbbr = Nothing,
+                                      argExprName = Just "test-value",
+                                      argDesc = "Test int flag" }],
                  argDescPosnArgs = [Arg { argIndex = OptionFixed,
                                       argAtype = ArgAtypeString,
                                       argName = "fixed",
@@ -29,7 +36,7 @@ argd = ArgDesc { argDescArgs = [Arg { argIndex = OptionFlag,
                                       argAbbr = Nothing,
                                       argExprName = Nothing,
                                       argDesc = "Test optional argument" }],
-                 argDescComplete = True }
+                 argDescComplete = False }
 
 main = do
   argv <- getArgs
