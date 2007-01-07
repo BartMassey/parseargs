@@ -4,9 +4,8 @@
 --- Copyright (C) 2007 Bart Massey
 --- ALL RIGHTS RESERVED
 
-module ParseArgs (baseName)
+module ParseArgs (baseName, parseArgs)
 where
-
 
 import Data.List
 import qualified Data.Map as Map
@@ -82,9 +81,32 @@ arg_string (Arg { argAbbr = abbr,
                 ("--" ++ s) ++
                 sep
 
+--- Filter out the empty keys for a hash.
+filter_keys :: [ (Maybe a, b) ] -> [ (a, b) ]
+filter_keys l =
+    foldr check_key [] l
+    where
+      check_key :: (Maybe a, b) -> [ (a, b) ] -> [ (a, b) ]
+      check_key (Nothing, _) rest = rest
+      check_key (Just k, v) rest = (k, v) : rest
+
 --- Given a description of the arguments, parseArgs produces
 --- a map from the arguments to their "values" and some other
---- useful byproducts.
-
---- parseArgs :: ArgDesc a -> [ String ] -> Args a
---- parseArgs argd argv =
+--- useful byproducts.  Sadly, we're trapped in the IO monad
+--- by wanting to report usage errors.
+parseArgs :: (Ord a) => ArgDesc a -> [ String ] -> IO (Args a)
+parseArgs argd argv = do
+  let ads = argDescArgs argd
+  let abbr_hash = make_keymap argAbbr ads
+  let name_hash = make_keymap argName ads
+  return (Args { args = Map.empty, argsProgName = "", argsRest = [] })
+  where
+    make_keymap :: (Ord b, Ord c) =>
+                   ((Arg b) -> Maybe c) ->
+                   [ Arg b ] ->
+                   Map.Map c (Arg b)
+    make_keymap f_field args =
+        (Map.fromList .
+         filter_keys .
+         map (\arg -> (f_field arg, arg)))
+           args
