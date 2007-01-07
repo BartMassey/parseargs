@@ -9,7 +9,9 @@ where
 
 import Data.List
 import qualified Data.Map as Map
-import Monad
+import Control.Monad
+import System.IO
+import Data.Maybe
 
 --- The main job of this module is to provide parseArgs.
 --- See below for its contract.
@@ -51,6 +53,7 @@ data ArgDesc a =
 data (Ord a) => Args a =
     Args { args :: Map.Map a ArgVal,
            argsProgName :: String,
+           argsUsage :: Handle -> IO (),
            argsRest :: [ String ] }
 
 --- Return the filename part of 'path'.
@@ -97,7 +100,7 @@ filter_keys l =
 --- for some reason.
 argdesc_error :: String -> IO a
 argdesc_error msg =
-    error ("internal error: argument description: " ++ msg)
+    fail ("internal error: argument description: " ++ msg)
 
 --- Make a keymap.
 --- We want an error message if the key list contains
@@ -114,22 +117,47 @@ keymap_from_list l =
           False -> return (Map.insert k a m)
           True -> argdesc_error ("duplicate key " ++ (show k))
 
+--- Make a keymap for looking up a flag argument.
+make_keymap :: (Ord a, Ord k, Show k) =>
+               ((Arg a) -> Maybe k) ->
+               [ Arg a ] ->
+               IO (Map.Map k (Arg a))
+make_keymap f_field args =
+    (keymap_from_list .
+     filter_keys .
+     map (\arg -> (f_field arg, arg))) args
+
 --- Given a description of the arguments, parseArgs produces
 --- a map from the arguments to their "values" and some other
 --- useful byproducts.  Sadly, we're trapped in the IO monad
 --- by wanting to report usage errors.
 parseArgs :: (Ord a) => ArgDesc a -> [ String ] -> IO (Args a)
-parseArgs argd argv = do
+parseArgs argd (pathname : argv) = do
   let ads = argDescArgs argd
   let abbr_hash = make_keymap argAbbr ads
   let name_hash = make_keymap argName ads
-  return (Args { args = Map.empty, argsProgName = "", argsRest = [] })
+  let prog_name = baseName pathname
+  let h_usage = mk_h_usage prog_name
+  let usage = h_usage stderr
+  return (Args { args = Map.empty,
+                 argsProgName = prog_name,
+                 argsUsage = h_usage,
+                 argsRest = [] })
   where
-    make_keymap :: (Ord a, Ord k, Show k) =>
-                   ((Arg a) -> Maybe k) ->
-                   [ Arg a ] ->
-                   IO (Map.Map k (Arg a))
-    make_keymap f_field args =
-        (keymap_from_list .
-         filter_keys .
-         map (\arg -> (f_field arg, arg))) args
+    --- Print a usage message on the given handle.
+    mk_h_usage :: String -> Handle -> IO ()
+    mk_h_usage prog_name h = do
+      hPutStr h (prog_name ++ ": usage: " ++ prog_name)
+      let args = argDescArgs argd
+      unless (null args)
+             (hPutStr h " [options]")
+      let posn_args = argDescPosnArgs argd
+      unless (null posn_args)
+             (mapM_ ((hPutStr h) . (format_posn "<" ">")) posn_args)
+      let opt_args = argDescOptArgs argd
+      unless (null opt_args)
+             (mapM_ ((hPutStr h) . (format_posn "[" "]")) opt_args)
+      fail "incorrect usage"
+      where
+        format_posn :: (Ord a) => String -> String -> Arg a -> String
+        format_posn l r a =  " " ++ l ++ (fromJust (argName a)) ++ r
