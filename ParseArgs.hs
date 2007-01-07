@@ -4,7 +4,9 @@
 --- Copyright (C) 2007 Bart Massey
 --- ALL RIGHTS RESERVED
 
-module ParseArgs (baseName, parseArgs)
+module ParseArgs (ArgVal(..), ArgAtype(..),
+                  Arg(..), ArgDesc(..), Args(..),
+                  baseName, parseArgs)
 where
 
 import Data.List
@@ -12,6 +14,7 @@ import qualified Data.Map as Map
 import Control.Monad
 import System.IO
 import Data.Maybe
+import System.Environment
 
 --- The main job of this module is to provide parseArgs.
 --- See below for its contract.
@@ -36,8 +39,8 @@ data ArgAtype =
 data (Ord a) => Arg a =
     Arg { argIndex :: a,
           argAtype :: ArgAtype,
+          argName :: String,
           argAbbr :: Maybe Char,
-          argName :: Maybe String,
           argExprName :: Maybe String,
           argDesc :: String }
 
@@ -53,7 +56,7 @@ data ArgDesc a =
 data (Ord a) => Args a =
     Args { args :: Map.Map a ArgVal,
            argsProgName :: String,
-           argsUsage :: Handle -> IO (),
+           argsUsage :: Handle -> String -> IO (),
            argsRest :: [ String ] }
 
 --- Return the filename part of 'path'.
@@ -73,19 +76,16 @@ arg_string (Arg { argAbbr = abbr,
                   argName = name,
                   argExprName = exprName }) =
     case exprName of
-      Nothing -> flag_part ""
-      Just s -> (flag_part " ") ++ "<" ++ s ++ ">"
+      Nothing -> flag_part
+      Just s -> flag_part ++ " <" ++ s ++ ">"
     where
-      flag_part :: String -> String
-      flag_part sep =
-      	  case name of
-            Nothing -> ""
-            Just s ->
-                (case abbr of
-                  Nothing -> ""
-                  Just c -> "-" ++ [c] ++ ",") ++
-                ("--" ++ s) ++
-                sep
+      flag_part :: String
+      flag_part =
+          (case abbr of
+             Nothing -> ""
+             Just c -> "-" ++ [c] ++ ",") ++
+          "--" ++
+          name
 
 --- Filter out the empty keys for a hash.
 filter_keys :: [ (Maybe a, b) ] -> [ (a, b) ]
@@ -100,7 +100,7 @@ filter_keys l =
 --- for some reason.
 argdesc_error :: String -> IO a
 argdesc_error msg =
-    fail ("internal error: argument description: " ++ msg)
+    error ("internal error: argument description: " ++ msg)
 
 --- Make a keymap.
 --- We want an error message if the key list contains
@@ -132,21 +132,24 @@ make_keymap f_field args =
 --- useful byproducts.  Sadly, we're trapped in the IO monad
 --- by wanting to report usage errors.
 parseArgs :: (Ord a) => ArgDesc a -> [ String ] -> IO (Args a)
-parseArgs argd (pathname : argv) = do
+parseArgs argd argv = do
   let ads = argDescArgs argd
   let abbr_hash = make_keymap argAbbr ads
-  let name_hash = make_keymap argName ads
+  let name_hash = make_keymap (Just . argName) ads
+  pathname <- getProgName
   let prog_name = baseName pathname
   let h_usage = mk_h_usage prog_name
   let usage = h_usage stderr
+  usage "not done yet"
   return (Args { args = Map.empty,
                  argsProgName = prog_name,
                  argsUsage = h_usage,
                  argsRest = [] })
   where
     --- Print a usage message on the given handle.
-    mk_h_usage :: String -> Handle -> IO ()
-    mk_h_usage prog_name h = do
+    mk_h_usage :: String -> Handle -> String -> IO ()
+    mk_h_usage prog_name h msg = do
+      --- top (summary) line
       hPutStr h (prog_name ++ ": usage: " ++ prog_name)
       let args = argDescArgs argd
       unless (null args)
@@ -157,7 +160,15 @@ parseArgs argd (pathname : argv) = do
       let opt_args = argDescOptArgs argd
       unless (null opt_args)
              (mapM_ ((hPutStr h) . (format_posn "[" "]")) opt_args)
-      fail "incorrect usage"
+      let complete = argDescComplete argd
+      unless complete
+             (hPutStr h " [--] ...")
+      hPutStrLn h ""
+      --- argument lines
+      
+      --- bail
+      hPutStrLn h ""
+      error ("usage error: " ++ msg)
       where
         format_posn :: (Ord a) => String -> String -> Arg a -> String
-        format_posn l r a =  " " ++ l ++ (fromJust (argName a)) ++ r
+        format_posn l r a =  " " ++ l ++ (argName a) ++ r
