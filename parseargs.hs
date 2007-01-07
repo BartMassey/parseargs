@@ -9,6 +9,7 @@ where
 
 import Data.List
 import qualified Data.Map as Map
+import Monad
 
 --- The main job of this module is to provide parseArgs.
 --- See below for its contract.
@@ -62,6 +63,8 @@ baseName s =
 
 
 --- Given an arg desc, produce a description string.
+--- Note that this works regardless of the argAtype,
+--- which it ignores.
 arg_string :: (Ord a) => Arg a -> String
 arg_string (Arg { argAbbr = abbr,
                   argName = name,
@@ -90,6 +93,27 @@ filter_keys l =
       check_key (Nothing, _) rest = rest
       check_key (Just k, v) rest = (k, v) : rest
 
+--- Fail with an error if the argument description is bad
+--- for some reason.
+argdesc_error :: String -> IO a
+argdesc_error msg =
+    error ("internal error: argument description: " ++ msg)
+
+--- Make a keymap.
+--- We want an error message if the key list contains
+--- duplicate keys.
+keymap_from_list :: (Ord k, Show k) =>
+                    [ (k, a) ] -> IO (Map.Map k a)
+keymap_from_list l =
+    foldM add_entry Map.empty l
+    where
+      add_entry :: (Ord k, Show k) =>
+                   (Map.Map k a) -> (k, a) -> IO (Map.Map k a)
+      add_entry m (k, a) =
+        case Map.member k m of
+          False -> return (Map.insert k a m)
+          True -> argdesc_error ("duplicate key " ++ (show k))
+
 --- Given a description of the arguments, parseArgs produces
 --- a map from the arguments to their "values" and some other
 --- useful byproducts.  Sadly, we're trapped in the IO monad
@@ -101,12 +125,11 @@ parseArgs argd argv = do
   let name_hash = make_keymap argName ads
   return (Args { args = Map.empty, argsProgName = "", argsRest = [] })
   where
-    make_keymap :: (Ord b, Ord c) =>
-                   ((Arg b) -> Maybe c) ->
-                   [ Arg b ] ->
-                   Map.Map c (Arg b)
+    make_keymap :: (Ord a, Ord k, Show k) =>
+                   ((Arg a) -> Maybe k) ->
+                   [ Arg a ] ->
+                   IO (Map.Map k (Arg a))
     make_keymap f_field args =
-        (Map.fromList .
+        (keymap_from_list .
          filter_keys .
-         map (\arg -> (f_field arg, arg)))
-           args
+         map (\arg -> (f_field arg, arg))) args
