@@ -6,6 +6,7 @@
 
 module ParseArgs (Argtype(..), DataArg(..), Arg(..),
                   ArgVal(..), Args(..),
+                  ArgsComplete(..),
                   baseName, parseArgs)
 where
 
@@ -55,8 +56,7 @@ data (Ord a) => Arg a =
           argAbbr :: Maybe Char,
           argName :: Maybe String,
           argData :: Maybe DataArg,
-          argDesc :: String } |
-    ArgStop
+          argDesc :: String }
 
 ---
 --- returned datatypes
@@ -72,7 +72,7 @@ data ArgVal =
 data (Ord a) => Args a =
     Args { args :: Map.Map a ArgVal,
            argsProgName :: String,
-           argsUsage :: Handle -> Maybe String -> IO (),
+           argsUsage :: String,
            argsRest :: [ String ] }
 
 ---
@@ -90,28 +90,21 @@ baseName s =
 
 --- True if the described argument is positional
 arg_posn :: (Ord a) => Arg a -> Bool
-arg_posn ArgStop = False
 arg_posn (Arg { argAbbr = Nothing,
                 argName = Nothing }) = True
 arg_posn _ = False
 
 --- True if the described argument is a flag
 arg_flag :: (Ord a) => Arg a -> Bool
-arg_flag ArgStop = False
 arg_flag a = not (arg_posn a)
-
---- True if the argument list ends in a stop
-args_stop :: (Ord a) => [ Arg a ] -> Bool
-args_stop [] = False
-args_stop a =
-    case last a of
-      ArgStop -> True
-      _ -> False
 
 --- True if the described argument is optional
 arg_optional :: (Ord a) => Arg a -> Bool
 arg_optional (Arg { argData = Just (DataArg { dataArgOptional = b }) }) = b
 arg_optional _ = True
+
+--- There's probably a better way to do this
+perhaps b s = if b then s else ""
 
 --- Format the described argument as a string
 arg_string :: (Ord a) => Arg a -> String
@@ -127,7 +120,6 @@ arg_string a@(Arg { argAbbr = abbr,
                (optionally "]")
     where
       sometimes = maybe ""
-      perhaps b s = if b then s else ""
       optionally s = perhaps (arg_optional a) s
       flag_name s = "--" ++ s
       flag_abbr c = [ '-', c ]
@@ -170,51 +162,52 @@ make_keymap f_field args =
      filter_keys .
      map (\arg -> (f_field arg, arg))) args
 
+--- What can be left over after the parse?
+data ArgsComplete =
+    ArgsComplete |   --- no extraneous arguments
+    ArgsTrailing |   --- trailing extraneous arguments OK
+    ArgsInterspersed   --- any extraneous arguments OK
+
 --- Given a description of the arguments, parseArgs produces
 --- a map from the arguments to their "values" and some other
 --- useful byproducts.  Sadly, we're trapped in the IO monad
 --- by wanting to report usage errors.
-parseArgs :: (Ord a) => [ Arg a ] -> [ String ] -> IO (Args a)
-parseArgs argd argv = do
+parseArgs :: (Ord a) => ArgsComplete -> [ Arg a ] -> [ String ] -> IO (Args a)
+parseArgs complete argd argv = do
   let abbr_hash = make_keymap argAbbr argd
   let name_hash = make_keymap argName argd
   pathname <- getProgName
   let prog_name = baseName pathname
-  let usage = make_usage prog_name
-  usage stderr (Just "not done yet")
+  let usage = make_usage_string prog_name
+  hPutStr stderr usage
+  error "not done yet"
   return (Args { args = Map.empty,
                  argsProgName = prog_name,
                  argsUsage = usage,
                  argsRest = [] })
   where
-    --- Print a usage message on the given handle.
-    make_usage prog_name h msg = do
+    --- Optional arguments must precede fixed arguments.
+    --- No argument may be "empty".
+    --- Generate a usage message string
+    make_usage_string prog_name =
       --- top (summary) line
-      hPutStr h (prog_name ++ ": usage: " ++ prog_name)
-      let flag_args = filter arg_flag argd
-      unless (null flag_args)
-             (hPutStr h " [options]")
-      let posn_args = filter arg_posn argd
-      unless (null posn_args)
-             (hPutStr h (" " ++ (unwords (map arg_string posn_args))))
-      let complete = args_stop argd
-      unless (args_stop argd)
-             (hPutStr h " [--] ...")
-      hPutStrLn h ""
+      (prog_name ++ ": usage: " ++ prog_name) ++
+      (perhaps (not (null flag_args))
+               " [options]") ++
+      (perhaps (not (null posn_args))
+               (" " ++ (unwords (map arg_string posn_args)))) ++
+      (case complete of
+         ArgsComplete -> " [--] ..."
+         _ -> "") ++
+      "\n" ++
       --- argument lines
-      let n = maximum (map (length . arg_string) argd)
-      mapM_ (put_line n) argd
-      --- perhaps bail
-      case msg of
-        Just m -> do
-                 hPutStrLn h ""
-                 error ("usage error: " ++ m)
-        Nothing -> return ()
+      (concatMap (arg_line n) argd)
       where
-        put_line n a = do
-          hPutStr h "  "
-          let s = arg_string a
-          hPutStr h s
-          hPutStr h (replicate (n - (length s)) ' ')
-          hPutStr h "  "
-          hPutStrLn h (argDesc a)
+        flag_args = filter arg_flag argd
+        posn_args = filter arg_posn argd
+        n = maximum (map (length . arg_string) argd)
+        arg_line n a =
+          let s = arg_string a in
+            "  " ++ s ++ 
+            (replicate (n - (length s)) ' ') ++
+            "  " ++ (argDesc a) ++ "\n"

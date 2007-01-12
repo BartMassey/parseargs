@@ -41,5 +41,5 @@ argd = [ Arg { argIndex = OptionFlag,
 
 main = do
   argv <- getArgs
-  args <- parseArgs argd argv
+  args <- parseArgs ArgsComplete argd argv
   putStrLn "parse successful"
