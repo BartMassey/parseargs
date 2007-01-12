@@ -174,6 +174,7 @@ data ArgsComplete =
 --- by wanting to report usage errors.
 parseArgs :: (Ord a) => ArgsComplete -> [ Arg a ] -> [ String ] -> IO (Args a)
 parseArgs complete argd argv = do
+  check_argd
   let abbr_hash = make_keymap argAbbr argd
   let name_hash = make_keymap argName argd
   pathname <- getProgName
@@ -186,8 +187,24 @@ parseArgs complete argd argv = do
                  argsUsage = usage,
                  argsRest = [] })
   where
-    --- Optional arguments must precede fixed arguments.
-    --- No argument may be "empty".
+    --- Check for various possible misuses.
+    check_argd = do
+      --- Order must be flags, posn args, optional posn args
+      let residue = dropWhile arg_flag argd
+      let residue' = dropWhile arg_fixed_posn residue
+      let residue'' = dropWhile arg_opt_posn residue'
+      unless (null residue'')
+             (argdesc_error "argument description in wrong order")
+      --- No argument may be "nullary".
+      when (or (map arg_nullary argd))
+           (argdesc_error "bogus 'nothing' argument")
+      where
+        arg_fixed_posn a = (arg_posn a) && (not (arg_optional a))
+        arg_opt_posn a = (arg_posn a) && (arg_optional a)
+        arg_nullary (Arg { argName = Nothing,
+                           argAbbr = Nothing,
+                           argData = Nothing }) = True
+        arg_nullary _ = False
     --- Generate a usage message string
     make_usage_string prog_name =
       --- top (summary) line
