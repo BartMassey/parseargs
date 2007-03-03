@@ -139,18 +139,21 @@ argdesc_error :: String -> IO a
 argdesc_error msg =
     error ("internal error: argument description: " ++ msg)
 
+--- Add a key-value pair to a map.  We want an error message
+--- if the map list contains duplicate keys.
+add_entry :: Map.Map k a -> (k, a) -> IO b -> IO b
+add_entry m (k, a) e =
+    case Map.member k m of
+      False -> return (Map.insert k a m)
+      True -> e
+
 --- Make a keymap.
---- We want an error message if the key list contains
---- duplicate keys.
 keymap_from_list :: (Ord k, Show k) =>
-                    [ (k, a) ] -> IO (Map.Map k a)
-keymap_from_list l =
+                    [ (k, a) ] -> String -> IO (Map.Map k a)
+keymap_from_list l msg =
     foldM add_entry Map.empty l
-    where
-      add_entry m (k, a) =
-        case Map.member k m of
-          False -> return (Map.insert k a m)
-          True -> argdesc_error ("duplicate key " ++ (show k))
+              (argdesc_error ("duplicate argument description name" ++
+                              (show k)))
 
 --- Make a keymap for looking up a flag argument.
 make_keymap :: (Ord a, Ord k, Show k) =>
@@ -175,18 +178,21 @@ data ArgsComplete =
 parseArgs :: (Ord a) => ArgsComplete -> [ Arg a ] -> [ String ] -> IO (Args a)
 parseArgs complete argd argv = do
   check_argd
-  let abbr_hash = make_keymap argAbbr argd
-  let name_hash = make_keymap argName argd
+  let flag_args = takeWhile arg_flag argd
+  let posn_args = dropWhile arg_flag argd
+  let abbr_hash = make_keymap argAbbr flag_args
+  let name_hash = make_keymap argName flag_args
   pathname <- getProgName
   let prog_name = baseName pathname
   let usage = make_usage_string prog_name
-  hPutStr stderr usage
-  error "not done yet"
-  return (Args { args = Map.empty,
+  rest <- parse argv []
+  return (Args { args,
                  argsProgName = prog_name,
                  argsUsage = usage,
-                 argsRest = [] })
+                 argsRest = rest })
   where
+    --- Map from arguments to values is principal product.
+    args = Map.empty
     --- Check for various possible misuses.
     check_argd = do
       --- Order must be flags, posn args, optional posn args
@@ -214,8 +220,8 @@ parseArgs complete argd argv = do
       (perhaps (not (null posn_args))
                (" " ++ (unwords (map arg_string posn_args)))) ++
       (case complete of
-         ArgsComplete -> " [--] ..."
-         _ -> "") ++
+         ArgsComplete -> ""
+         _ -> " [--] ...") ++
       "\n" ++
       --- argument lines
       (concatMap (arg_line n) argd)
@@ -228,3 +234,48 @@ parseArgs complete argd argv = do
             "  " ++ s ++ 
             (replicate (n - (length s)) ' ') ++
             "  " ++ (argDesc a) ++ "\n"
+    --- simple recursive-descent parser
+    parse [] [] =
+        return []
+    parse [] rest =
+        case complete of
+          ArgsComplete -> parse_error "unexpected extra arguments"
+          _ -> return rest
+    parse (aa : aas) rest =
+        case aa of
+          "--" -> case complete of
+                    ArgsComplete -> parse_error
+                                    "unexpected empty argument (\"--\")"
+                    _ -> parse [] (rest ++ aas)
+          ('-' : '-' : name) -> parse_named name aas rest
+          ('-' : abbr : abbrs) -> parse_abbr abbr abbrs aas rest
+          _ -> parse_positional aa aas rest
+    where
+      parse_error msg = do
+        hPutStrLn stderr usage
+        error msg
+      parse_named name args rest =
+          if Map.member name name_hash then do
+              ad <- Map.lookup name name_hash
+              more_args <- peel ad args
+              parse more_args rest
+          else
+              case complete of
+                ArgsInterspersed -> parse args (rest ++ ["--" ++ name])
+                _ -> parse_error ("unknown argument (\"--" ++ name ++ "\")")
+      parse_abbr abbr abbrs args rest =
+          if Map.member abbr abbr_hash then do
+              ad <- Map.lookup abbr abbr_hash
+              more_args <- peel ad args
+              parse more_args rest
+          else
+              case complete of
+                ArgsInterspersed ->
+                    let rest' = rest ++ [['-', abbr]] in
+                    case abbrs of
+                      (aa : aas) -> parse_abbr aa aas args
+                                               rest'
+                      [] -> parse args rest'
+                _ -> parse_error ("unknown argument (\"-" ++ abbr ++ "\")")
+      parse_positional arg args rest =
+          case 
