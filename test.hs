@@ -9,7 +9,7 @@ data Options =
     OptionFlagInt |
     OptionFixed |
     OptionOptional
-    deriving (Ord, Eq)
+    deriving (Ord, Eq, Show)
 
 argd :: [ Arg Options ]
 argd = [ Arg { argIndex = OptionFlag,

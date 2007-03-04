@@ -147,7 +147,7 @@ add_entry :: (Ord k, Show k) =>
 add_entry e m (k, a) =
     case Map.member k m of
       False -> return (Map.insert k a m)
-      True -> e (show k)
+      True -> do e (show k)
 
 --- Make a keymap.
 keymap_from_list :: (Ord k, Show k) =>
@@ -173,11 +173,29 @@ data ArgsComplete =
     ArgsTrailing |   --- trailing extraneous arguments OK
     ArgsInterspersed   --- any extraneous arguments OK
 
+--- The function f is given a state s and a list l, and expected
+--- to produce a new state and a shorter list.  completeIO iterates
+--- f until l is empty and returns the final state.
+completeIO :: (s -> [e] -> IO ([e], s)) -> s -> [e] -> IO s
+completeIO f s [] = return s
+completeIO f s l = do
+  (l', s') <- f s l
+  completeIO f s' l'
+
+--- XXX Hooray for restricted polymorphism!
+--- Print an error message during parsing.
+parse_error :: String -> String -> IO a
+parse_error usage msg = do
+  hPutStrLn stderr usage
+  error msg
+
 --- Given a description of the arguments, parseArgs produces
 --- a map from the arguments to their "values" and some other
 --- useful byproducts.  Sadly, we're trapped in the IO monad
 --- by wanting to report usage errors.
-parseArgs :: (Ord a) => ArgsComplete -> [ Arg a ] -> [ String ] -> IO (Args a)
+parseArgs :: (Show a, Ord a) =>
+             ArgsComplete -> [ Arg a ] -> [ String ] ->
+             IO (Args a)
 parseArgs complete argd argv = do
   check_argd
   let flag_args = takeWhile arg_flag argd
@@ -187,12 +205,9 @@ parseArgs complete argd argv = do
   pathname <- getProgName
   let prog_name = baseName pathname
   let usage = make_usage_string prog_name
-  let parse_error msg = do
-        hPutStrLn stderr usage
-        error msg
-  (am, [], rest) <- foldM
-                      (parse parse_error name_hash abbr_hash)
-                      ((Map.empty), argv, [])
+  (am, rest) <- completeIO (parse usage name_hash abbr_hash)
+                           (Map.empty, [])
+                           argv
   return (Args { args = am,
                  argsProgName = prog_name,
                  argsUsage = usage,
@@ -240,58 +255,37 @@ parseArgs complete argd argv = do
             (replicate (n - (length s)) ' ') ++
             "  " ++ (argDesc a) ++ "\n"
     --- simple recursive-descent parser
-    parse _ _ _ av = return av
-    parse parse_error _ _ (am, [], rest) =
+    parse _ _ _ av@(_, []) [] = return ([], av)
+    parse usage _ _ av [] =
         case complete of
-          ArgsComplete -> parse_error "unexpected extra arguments"
-          _ -> return (am, [], rest)
-    parse parse_error name_hash abbr_hash (am, (aa : aas), rest) =
+          ArgsComplete -> parse_error usage "unexpected extra arguments"
+          _ -> return ([], av)
+    parse usage name_hash abbr_hash (am, rest) (aa : aas) =
         case aa of
           "--" -> case complete of
-                    ArgsComplete -> parse_error
+                    ArgsComplete -> parse_error usage
                                     "unexpected empty argument (\"--\")"
-                    _ -> return (am, [], (rest ++ aas))
+                    _ -> return ([], (am, (rest ++ aas)))
           ('-' : '-' : name) ->
               case Map.lookup name name_hash of
                 Just ad -> peel ad aas
                 Nothing ->
                     case complete of
                       ArgsInterspersed ->
-                          return (am, aas, rest ++ ["--" ++ name])
-                      _ -> parse_error
+                          return (aas, (am, rest ++ ["--" ++ name]))
+                      _ -> parse_error usage
                            ("unknown argument (\"--" ++ name ++ "\")")
-
----          ('-' : abbr : abbrs) -> do
-          _ -> parse_error "not handled yet"
+          _ -> parse_error usage "not handled yet"
         where
-          e_duparg k = parse_error ("duplicate argument " ++ k)
+          e_duparg k = parse_error usage ("duplicate argument " ++ k)
           peel ad@(Arg { argData = Nothing, argIndex = index }) argl = do
-              am' <- add_entry e_duparg am (index, ArgValFlag)
-              return (am', argl, rest)
+            am' <- add_entry e_duparg am (index, ArgValFlag)
+            return (argl, (am', rest))
           peel ad@(Arg { argData = Just (DataArg {
                                    dataArgArgtype = ArgtypeString }),
                          argIndex = index })
                (a : argl) = do
-              am' <- add_entry e_duparg am (index, ArgValString a)
-              return (am', argl, rest)
-          peel _ _ = parse_error "not yet processed argument type"
----          parse_abbr abbr abbrs args' =
----              if Map.member abbr abbr_hash then do
----                    ad <- Map.lookup abbr abbr_hash
----                    (am', args'', rest') <- peel ad args'
----                    parse am'
----                          parse_error
----                          name_hash
----                          abbr_hash
----                          args''
----                          rest'
----              else
----                  case complete of
----                    ArgsInterspersed ->
----                        let rest' = rest ++ [['-', abbr]] in
----                        case abbrs of
----                          (aa : aas) -> parse_abbr aa aas args rest'
----                          [] -> parse args rest'
----                          _ -> parse_error
----                                   ("unknown argument (\"-" ++ abbr ++ "\")")
----          parse_positional arg args rest =
+            am' <- add_entry e_duparg am (index, ArgValString a)
+            return (argl, (am', rest))
+          peel _ _ = parse_error usage "not yet processed argument type"
+            
