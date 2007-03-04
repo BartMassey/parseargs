@@ -141,17 +141,17 @@ argdesc_error msg =
 
 --- Add a key-value pair to a map.  We want an error message
 --- if the map list contains duplicate keys.
-add_entry :: (Ord k, Show k) => (String -> IO (Map.Map k a)) -> Map.Map k a ->
-                                (k, a) -> IO (Map.Map k a)
+add_entry :: (Ord k, Show k) => (String -> IO ()) -> Map.Map k a ->
+                                (k, a) -> IO ()
 add_entry e m (k, a) =
     case Map.member k m of
-      False -> return (Map.insert k a m)
+      False -> do (Map.insert k a m)
       True -> e (show k)
 
 --- Make a keymap.
 keymap_from_list :: (Ord k, Show k) =>
-                    [ (k, a) ] -> String -> IO (Map.Map k a)
-keymap_from_list l msg =
+                    [ (k, a) ] -> IO (Map.Map k a)
+keymap_from_list l =
     foldM (add_entry e) Map.empty l
     where
       e k = argdesc_error ("duplicate argument description name " ++ k)
@@ -160,7 +160,7 @@ keymap_from_list l msg =
 make_keymap :: (Ord a, Ord k, Show k) =>
                ((Arg a) -> Maybe k) ->
                [ Arg a ] ->
-               (String -> IO (Map.Map k (Arg a)))
+               IO (Map.Map k (Arg a))
 make_keymap f_field args =
     (keymap_from_list .
      filter_keys .
@@ -181,8 +181,8 @@ parseArgs complete argd argv = do
   check_argd
   let flag_args = takeWhile arg_flag argd
   let posn_args = dropWhile arg_flag argd
-  let name_hash = make_keymap argName flag_args
-  let abbr_hash = make_keymap argAbbr flag_args
+  name_hash <- make_keymap argName flag_args
+  abbr_hash <- make_keymap argAbbr flag_args
   pathname <- getProgName
   let prog_name = baseName pathname
   let usage = make_usage_string prog_name
