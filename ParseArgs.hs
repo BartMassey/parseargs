@@ -8,7 +8,8 @@ module ParseArgs (Argtype(..), DataArg(..), Arg(..),
                   ArgsComplete(..),
                   ArgRecord, Args(..),
                   baseName, parseArgs,
-                  gotArg, getArgString)
+                  gotArg, getArgString, getArgInteger, getArgInt,
+                  getArgDouble, getArgFloat)
 where
 
 import Data.List
@@ -69,13 +70,12 @@ data (Ord a) => Arg a =
 ---
 
 --- The kinds of "value" an argument can have.
-data Argval =
-    ArgvalFlag |
-    ArgvalString String |
-    ArgvalInteger Integer |
-    ArgvalInt Int |
-    ArgvalDouble Double |
-    ArgvalFloat Float
+data Argval = ArgvalFlag
+            | ArgvalString String
+            | ArgvalInteger Integer
+            | ArgvalInt Int
+            | ArgvalDouble Double
+            | ArgvalFloat Float
 
 type ArgRecord a = Map.Map a Argval
 
@@ -313,8 +313,10 @@ parseArgs complete argd argv = do
                (a : argl) = do
                  v <- case atype of
                         ArgtypeString _ -> return (ArgvalString a)
-                        _ -> parse_error usage
-                               ("not yet processed argument type for " ++ name)
+                        ArgtypeInteger _ -> return (ArgvalInteger (read a))
+                        ArgtypeInt _ -> return (ArgvalInt (read a))
+                        ArgtypeDouble _ -> return (ArgvalDouble (read a))
+                        ArgtypeFloat _ -> return (ArgvalFloat (read a))
                  am' <- add_entry name am (index, v)
                  return (argl, (am', rest))
 
@@ -325,8 +327,43 @@ gotArg (Args { args = am }) k =
       Just _ -> True
       Nothing -> False
 
-getArgString :: (Ord a) => Args a -> a -> Maybe String
+--- return the String, if any, of the given argument
+getArgString :: (Show a, Ord a) => Args a -> a -> Maybe String
 getArgString (Args { args = am }) k =
     case Map.lookup k am of
       Just (ArgvalString s) -> Just s
       Nothing -> Nothing
+      _ -> error ("internal error: getArgString " ++ (show k))
+
+--- return the Integer, if any, of the given argument
+getArgInteger :: (Show a, Ord a) => Args a -> a -> Maybe Integer
+getArgInteger (Args { args = am }) k =
+    case Map.lookup k am of
+      Just (ArgvalInteger s) -> Just s
+      Nothing -> Nothing
+      _ -> error ("internal error: getArgInteger " ++ (show k))
+
+--- return the Int, if any, of the given argument
+getArgInt :: (Show a, Ord a) => Args a -> a -> Maybe Int
+getArgInt (Args { args = am }) k =
+    case Map.lookup k am of
+      Just (ArgvalInt s) -> Just s
+      Nothing -> Nothing
+      _ -> error ("internal error: getArgInt " ++ (show k))
+
+--- return the Double, if any, of the given argument
+getArgDouble :: (Show a, Ord a) => Args a -> a -> Maybe Double
+getArgDouble (Args { args = am }) k =
+    case Map.lookup k am of
+      Just (ArgvalDouble s) -> Just s
+      Nothing -> Nothing
+      _ -> error ("internal error: getArgDouble " ++ (show k))
+
+--- return the Float, if any, of the given argument
+getArgFloat :: (Show a, Ord a) => Args a -> a -> Maybe Float
+getArgFloat (Args { args = am }) k =
+    case Map.lookup k am of
+      Just (ArgvalFloat s) -> Just s
+      Nothing -> Nothing
+      _ -> error ("internal error: getArgFloat " ++ (show k))
+

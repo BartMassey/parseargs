@@ -57,3 +57,6 @@ main = do
   case (getArgString args OptionFlagString) of
     Just s -> putStrLn ("saw string " ++ s)
     Nothing -> return ()
+  case (getArgInt args OptionFlagInt) of
+    Just d -> putStrLn ("saw int " ++ (show d))
+    Nothing -> return ()
