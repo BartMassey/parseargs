@@ -269,7 +269,7 @@ parseArgs complete argd argv = do
         case aa of
           "--" -> case complete of
                     ArgsComplete -> parse_error usage
-                                    "unexpected empty argument (\"--\")"
+                                    "unexpected -- (extra arguments not allowed)"
                     _ -> return ([], (am, (rest ++ aas)))
           s@('-' : '-' : name) ->
               case Map.lookup name name_hash of
@@ -279,7 +279,7 @@ parseArgs complete argd argv = do
                       ArgsInterspersed ->
                           return (aas, (am, rest ++ ["--" ++ name]))
                       _ -> parse_error usage
-                           ("unknown argument (\"--" ++ name ++ "\")")
+                           ("unknown argument --" ++ name)
           ('-' : abbr : abbrs) ->
               case Map.lookup abbr abbr_hash of
                 Just ad -> do
@@ -287,7 +287,7 @@ parseArgs complete argd argv = do
                   case abbrs of
                     [] -> return p
                     ('-' : _) -> parse_error usage
-                                 ("bad internal \"-\" in argument " ++ aa)
+                                 ("bad internal '-' in argument " ++ aa)
                     _ -> return (['-' : abbrs] ++ args', state')
                 Nothing ->
                     case complete of
@@ -295,7 +295,7 @@ parseArgs complete argd argv = do
                           return (['-' : abbrs] ++ aas,
                                   (am, rest ++ [['-', abbr]]))
                       _ -> parse_error usage
-                           ("unknown argument (\"-" ++ [abbr] ++ "\")")
+                           ("unknown argument -" ++ [abbr])
           _ -> parse_error usage "not handled yet"
         where
           add_entry s m (k, a) =
@@ -303,17 +303,20 @@ parseArgs complete argd argv = do
                 False -> return (Map.insert k a m)
                 True -> parse_error usage ("duplicate argument " ++ s)
           peel name ad@(Arg { argData = Nothing, argIndex = index }) argl = do
-            am' <- add_entry name am (index, ArgvalFlag)
-            return (argl, (am', rest))
+              am' <- add_entry name am (index, ArgvalFlag)
+              return (argl, (am', rest))
+          peel name (Arg { argData = Just (DataArg {}) }) [] =
+              parse_error usage (name ++ " is missing its argument")
           peel name ad@(Arg { argData = Just (DataArg {
-                                dataArgArgtype = ArgtypeString _ }),
+                                dataArgArgtype = atype }),
                               argIndex = index })
                (a : argl) = do
-            am' <- add_entry name am (index, ArgvalString a)
-            return (argl, (am', rest))
-          peel name _ _ = parse_error usage
-                         ("not yet processed argument type for " ++ name)
-            
+                 v <- case atype of
+                        ArgtypeString _ -> return (ArgvalString a)
+                        _ -> parse_error usage
+                               ("not yet processed argument type for " ++ name)
+                 am' <- add_entry name am (index, v)
+                 return (argl, (am', rest))
 
 --- True if the arg was present.  Works on all types
 gotArg :: (Ord a) => Args a -> a -> Bool
