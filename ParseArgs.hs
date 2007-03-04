@@ -150,23 +150,17 @@ argdesc_error :: String -> IO a
 argdesc_error msg =
     error ("internal error: argument description: " ++ msg)
 
---- Add a key-value pair to a map.  We want an error message
---- if the map list contains duplicate keys.
-add_entry :: (Ord k, Show k) =>
-             (String -> IO (Map.Map k a)) -> Map.Map k a ->
-             (k, a) -> IO (Map.Map k a)
-add_entry e m (k, a) =
-    case Map.member k m of
-      False -> return (Map.insert k a m)
-      True -> do e (show k)
-
 --- Make a keymap.
 keymap_from_list :: (Ord k, Show k) =>
                     [ (k, a) ] -> IO (Map.Map k a)
 keymap_from_list l =
-    foldM (add_entry e) Map.empty l
+    foldM add_entry Map.empty l
     where
-      e k = argdesc_error ("duplicate argument description name " ++ k)
+      add_entry m (k, a) = 
+          case Map.member k m of
+            False -> return (Map.insert k a m)
+            True -> argdesc_error ("duplicate argument description name " ++
+                                   (show k))
 
 --- Make a keymap for looking up a flag argument.
 make_keymap :: (Ord a, Ord k, Show k) =>
@@ -277,9 +271,9 @@ parseArgs complete argd argv = do
                     ArgsComplete -> parse_error usage
                                     "unexpected empty argument (\"--\")"
                     _ -> return ([], (am, (rest ++ aas)))
-          ('-' : '-' : name) ->
+          s@('-' : '-' : name) ->
               case Map.lookup name name_hash of
-                Just ad -> peel ad aas
+                Just ad -> peel s ad aas
                 Nothing ->
                     case complete of
                       ArgsInterspersed ->
@@ -289,7 +283,7 @@ parseArgs complete argd argv = do
           ('-' : abbr : abbrs) ->
               case Map.lookup abbr abbr_hash of
                 Just ad -> do
-                  p@(args', state') <- peel ad aas
+                  p@(args', state') <- peel ['-', abbr] ad aas
                   case abbrs of
                     [] -> return p
                     ('-' : _) -> parse_error usage
@@ -304,17 +298,21 @@ parseArgs complete argd argv = do
                            ("unknown argument (\"-" ++ [abbr] ++ "\")")
           _ -> parse_error usage "not handled yet"
         where
-          e_duparg k = parse_error usage ("duplicate argument " ++ k)
-          peel ad@(Arg { argData = Nothing, argIndex = index }) argl = do
-            am' <- add_entry e_duparg am (index, ArgvalFlag)
+          add_entry s m (k, a) =
+              case Map.member k m of
+                False -> return (Map.insert k a m)
+                True -> parse_error usage ("duplicate argument " ++ s)
+          peel name ad@(Arg { argData = Nothing, argIndex = index }) argl = do
+            am' <- add_entry name am (index, ArgvalFlag)
             return (argl, (am', rest))
-          peel ad@(Arg { argData = Just (DataArg {
-                                   dataArgArgtype = ArgtypeString _ }),
-                         argIndex = index })
+          peel name ad@(Arg { argData = Just (DataArg {
+                                dataArgArgtype = ArgtypeString _ }),
+                              argIndex = index })
                (a : argl) = do
-            am' <- add_entry e_duparg am (index, ArgvalString a)
+            am' <- add_entry name am (index, ArgvalString a)
             return (argl, (am', rest))
-          peel _ _ = parse_error usage "not yet processed argument type"
+          peel name _ _ = parse_error usage
+                         ("not yet processed argument type for " ++ name)
             
 
 --- True if the arg was present.  Works on all types
