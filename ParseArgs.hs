@@ -141,7 +141,8 @@ argdesc_error msg =
 
 --- Add a key-value pair to a map.  We want an error message
 --- if the map list contains duplicate keys.
-add_entry :: IO b -> Map.Map k a -> (k, a) -> IO b
+add_entry :: (Ord k, Show k) => (String -> IO (Map.Map k a)) -> Map.Map k a ->
+                                (k, a) -> IO (Map.Map k a)
 add_entry e m (k, a) =
     case Map.member k m of
       False -> return (Map.insert k a m)
@@ -151,7 +152,7 @@ add_entry e m (k, a) =
 keymap_from_list :: (Ord k, Show k) =>
                     [ (k, a) ] -> String -> IO (Map.Map k a)
 keymap_from_list l msg =
-    foldM add_entry e Map.empty l
+    foldM (add_entry e) Map.empty l
     where
       e k = argdesc_error ("duplicate argument description name " ++ k)
 
@@ -159,7 +160,7 @@ keymap_from_list l msg =
 make_keymap :: (Ord a, Ord k, Show k) =>
                ((Arg a) -> Maybe k) ->
                [ Arg a ] ->
-               IO (Map.Map k (Arg a))
+               (String -> IO (Map.Map k (Arg a)))
 make_keymap f_field args =
     (keymap_from_list .
      filter_keys .
@@ -249,19 +250,23 @@ parseArgs complete argd argv = do
           "--" -> case complete of
                     ArgsComplete -> parse_error
                                     "unexpected empty argument (\"--\")"
-                    _ -> parse [] (rest ++ aas)
+                    _ -> parse parse_error name_hash abbr_hash [] (rest ++ aas)
           ('-' : '-' : name) -> parse_named name aas rest
           ('-' : abbr : abbrs) -> parse_abbr abbr abbrs aas rest
           _ -> parse_positional aa aas rest
         where
           e_duparg k = parse_error ("duplicate argument " ++ k)
-          peel ad@{ argData = Nothing,
-                    argIndex = index } argl = do
+          peel ad@(Arg { argData = Nothing, argIndex = index })
+               argl = do
               add_entry e_duparg args (index, ArgValFlag)
               return argl
-          peel ad@{ argData = Just {},
-                    argIndex = index } (arg : argl) = do
-              add_entry e_duparg args (index, ArgValInt )
+          peel ad@(Arg { argData = Just (DataArg {
+                                   dataArgArgtype = ArgtypeString }),
+                         argIndex = index })
+               (arg : argl) = do
+              add_entry e_duparg args (index, ArgValString arg)
+              return argl
+          peel _ _ = parse_error "not yet processed argument type"
           parse_named name args rest =
               if Map.member name name_hash then do
                     ad <- Map.lookup name name_hash
