@@ -5,8 +5,8 @@
 --- ALL RIGHTS RESERVED
 
 module ParseArgs (Argtype(..), DataArg(..), Arg(..),
-                  ArgRecord, Args(..),
                   ArgsComplete(..),
+                  ArgRecord, Args(..),
                   baseName, parseArgs,
                   gotArg, getArgString)
 where
@@ -286,6 +286,22 @@ parseArgs complete argd argv = do
                           return (aas, (am, rest ++ ["--" ++ name]))
                       _ -> parse_error usage
                            ("unknown argument (\"--" ++ name ++ "\")")
+          ('-' : abbr : abbrs) ->
+              case Map.lookup abbr abbr_hash of
+                Just ad -> do
+                  p@(args', state') <- peel ad aas
+                  case abbrs of
+                    [] -> return p
+                    ('-' : _) -> parse_error usage
+                                 ("bad internal \"-\" in argument " ++ aa)
+                    _ -> return (['-' : abbrs] ++ args', state')
+                Nothing ->
+                    case complete of
+                      ArgsInterspersed ->
+                          return (['-' : abbrs] ++ aas,
+                                  (am, rest ++ [['-', abbr]]))
+                      _ -> parse_error usage
+                           ("unknown argument (\"-" ++ [abbr] ++ "\")")
           _ -> parse_error usage "not handled yet"
         where
           e_duparg k = parse_error usage ("duplicate argument " ++ k)
