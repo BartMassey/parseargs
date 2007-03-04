@@ -3,10 +3,12 @@ where
 
 import ParseArgs
 import System.Environment
+import Control.Monad
 
 data Options =
     OptionFlag |
     OptionFlagInt |
+    OptionFlagString |
     OptionFixed |
     OptionOptional
     deriving (Ord, Eq, Show)
@@ -17,6 +19,13 @@ argd = [ Arg { argIndex = OptionFlag,
                argAbbr = Just 'f',
                argData = Nothing,
                argDesc = "Test flag" },
+         Arg { argIndex = OptionFlagString,
+               argName = Just "stringflag",
+               argAbbr = Nothing,
+               argData = Just (DataArg { dataArgName = "test-value",
+                                         dataArgArgtype = ArgtypeString,
+                                         dataArgOptional = True }),
+               argDesc = "Test string flag" },
          Arg { argIndex = OptionFlagInt,
                argName = Just "intflag",
                argAbbr = Nothing,
@@ -43,3 +52,7 @@ main = do
   argv <- getArgs
   args <- parseArgs ArgsComplete argd argv
   putStrLn "parse successful"
+  when (gotArg args OptionFlag)
+       (putStrLn "saw flag")
+  case (getArgString args OptionFlagString) of
+    Just s -> putStrLn ("saw string " ++ s)

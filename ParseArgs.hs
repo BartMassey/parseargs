@@ -7,7 +7,8 @@
 module ParseArgs (Argtype(..), DataArg(..), Arg(..),
                   ArgVal(..), Args(..),
                   ArgsComplete(..),
-                  baseName, parseArgs)
+                  baseName, parseArgs,
+                  gotArg, getArgString)
 where
 
 import Data.List
@@ -289,3 +290,15 @@ parseArgs complete argd argv = do
             return (argl, (am', rest))
           peel _ _ = parse_error usage "not yet processed argument type"
             
+--- True if the arg was present.  Works on all types
+gotArg :: (Ord a) => Args a -> a -> Bool
+gotArg (Args { args = am }) k =
+    case Map.lookup k am of
+      Just _ -> True
+      Nothing -> False
+
+getArgString :: (Ord a) => Args a -> a -> Maybe String
+getArgString (Args { args = am }) k =
+    case Map.lookup k am of
+      Just (ArgValString s) -> Just s
+      Nothing -> Nothing
