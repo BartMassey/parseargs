@@ -5,7 +5,7 @@
 --- ALL RIGHTS RESERVED
 
 module ParseArgs (Argtype(..), DataArg(..), Arg(..),
-                  ArgVal(..), Args(..),
+                  ArgRecord, Args(..),
                   ArgsComplete(..),
                   baseName, parseArgs,
                   gotArg, getArgString)
@@ -25,8 +25,13 @@ import System.Environment
 --- provided datatypes
 ---
 
---- The types of arguments carrying data
-data Argtype = ArgtypeString | ArgtypeInt
+--- The types of arguments carrying data;
+--- the constructor arguments are for default values
+data Argtype = ArgtypeString (Maybe String)
+             | ArgtypeInteger (Maybe Integer)
+             | ArgtypeInt (Maybe Int)
+             | ArgtypeDouble (Maybe Double)
+             | ArgtypeFloat (Maybe Float)
 
 --- Information specific to an argument carrying data
 data DataArg = DataArg { dataArgName :: String,
@@ -64,14 +69,19 @@ data (Ord a) => Arg a =
 ---
 
 --- The kinds of "value" an argument can have.
-data ArgVal =
-    ArgValFlag |
-    ArgValString String |
-    ArgValInt Int
+data Argval =
+    ArgvalFlag |
+    ArgvalString String |
+    ArgvalInteger Integer |
+    ArgvalInt Int |
+    ArgvalDouble Double |
+    ArgvalFloat Float
+
+type ArgRecord a = Map.Map a Argval
 
 --- The data structure parseArgs produces.
 data (Ord a) => Args a =
-    Args { args :: Map.Map a ArgVal,
+    Args { args :: ArgRecord a,
            argsProgName :: String,
            argsUsage :: String,
            argsRest :: [ String ] }
@@ -280,16 +290,17 @@ parseArgs complete argd argv = do
         where
           e_duparg k = parse_error usage ("duplicate argument " ++ k)
           peel ad@(Arg { argData = Nothing, argIndex = index }) argl = do
-            am' <- add_entry e_duparg am (index, ArgValFlag)
+            am' <- add_entry e_duparg am (index, ArgvalFlag)
             return (argl, (am', rest))
           peel ad@(Arg { argData = Just (DataArg {
-                                   dataArgArgtype = ArgtypeString }),
+                                   dataArgArgtype = ArgtypeString _ }),
                          argIndex = index })
                (a : argl) = do
-            am' <- add_entry e_duparg am (index, ArgValString a)
+            am' <- add_entry e_duparg am (index, ArgvalString a)
             return (argl, (am', rest))
           peel _ _ = parse_error usage "not yet processed argument type"
             
+
 --- True if the arg was present.  Works on all types
 gotArg :: (Ord a) => Args a -> a -> Bool
 gotArg (Args { args = am }) k =
@@ -300,5 +311,5 @@ gotArg (Args { args = am }) k =
 getArgString :: (Ord a) => Args a -> a -> Maybe String
 getArgString (Args { args = am }) k =
     case Map.lookup k am of
-      Just (ArgValString s) -> Just s
+      Just (ArgvalString s) -> Just s
       Nothing -> Nothing
