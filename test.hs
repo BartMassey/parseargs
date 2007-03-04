@@ -56,3 +56,4 @@ main = do
        (putStrLn "saw flag")
   case (getArgString args OptionFlagString) of
     Just s -> putStrLn ("saw string " ++ s)
+    Nothing -> return ()
