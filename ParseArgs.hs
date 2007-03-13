@@ -56,7 +56,7 @@ data DataArg = DataArg { dataArgName :: String,
 --- In case 1.1 or 2, the dataArgOptional field of
 --- argData determines whether the given flag or
 --- positional argument must appear.  Obviously, all
---- non-argument flags are optional.
+--- flags are optional.
 
 data (Ord a) => Arg a =
     Arg { argIndex :: a,
@@ -187,6 +187,13 @@ completeIO f s l = do
   (l', s') <- f s l
   completeIO f s' l'
 
+--- XXX Hooray for restricted polymorphism!
+--- Print an error message during parsing.
+parse_error :: String -> String -> IO a
+parse_error usage msg = do
+  hPutStrLn stderr usage
+  error msg
+
 --- Given a description of the arguments, parseArgs produces
 --- a map from the arguments to their "values" and some other
 --- useful byproducts.  Sadly, we're trapped in the IO monad
@@ -203,7 +210,7 @@ parseArgs complete argd argv = do
   pathname <- getProgName
   let prog_name = baseName pathname
   let usage = make_usage_string prog_name
-  (am, rest) <- completeIO (parse (parse_error usage) name_hash abbr_hash)
+  (am, rest) <- completeIO (parse usage name_hash abbr_hash)
                            (Map.empty, [])
                            argv
   return (Args { args = am,
@@ -211,10 +218,6 @@ parseArgs complete argd argv = do
                  argsUsage = usage,
                  argsRest = rest })
   where
-    parse_error :: String -> String -> IO a
-    parse_error usage msg = do
-      hPutStrLn stderr usage
-      error msg
     --- Check for various possible misuses.
     check_argd = do
       --- Order must be flags, posn args, optional posn args
@@ -258,14 +261,14 @@ parseArgs complete argd argv = do
             "  " ++ (argDesc a) ++ "\n"
     --- simple recursive-descent parser
     parse _ _ _ av@(_, []) [] = return ([], av)
-    parse pe _ _ av [] =
+    parse usage _ _ av [] =
         case complete of
-          ArgsComplete -> pe "unexpected extra arguments"
+          ArgsComplete -> parse_error usage "unexpected extra arguments"
           _ -> return ([], av)
-    parse pe name_hash abbr_hash (am, rest) (aa : aas) =
+    parse usage name_hash abbr_hash (am, rest) (aa : aas) =
         case aa of
           "--" -> case complete of
-                    ArgsComplete -> pe
+                    ArgsComplete -> parse_error usage
                                     "unexpected -- (extra arguments not allowed)"
                     _ -> return ([], (am, (rest ++ aas)))
           s@('-' : '-' : name) ->
@@ -275,7 +278,7 @@ parseArgs complete argd argv = do
                     case complete of
                       ArgsInterspersed ->
                           return (aas, (am, rest ++ ["--" ++ name]))
-                      _ -> pe
+                      _ -> parse_error usage
                            ("unknown argument --" ++ name)
           ('-' : abbr : abbrs) ->
               case Map.lookup abbr abbr_hash of
@@ -283,7 +286,7 @@ parseArgs complete argd argv = do
                   p@(args', state') <- peel ['-', abbr] ad aas
                   case abbrs of
                     [] -> return p
-                    ('-' : _) -> pe
+                    ('-' : _) -> parse_error usage
                                  ("bad internal '-' in argument " ++ aa)
                     _ -> return (['-' : abbrs] ++ args', state')
                 Nothing ->
@@ -291,19 +294,19 @@ parseArgs complete argd argv = do
                       ArgsInterspersed ->
                           return (['-' : abbrs] ++ aas,
                                   (am, rest ++ [['-', abbr]]))
-                      _ -> pe
+                      _ -> parse_error usage
                            ("unknown argument -" ++ [abbr])
-          _ -> pe "not handled yet"
+          _ -> parse_error usage "not handled yet"
         where
           add_entry s m (k, a) =
               case Map.member k m of
                 False -> return (Map.insert k a m)
-                True -> error ("duplicate argument " ++ s)
+                True -> parse_error usage ("duplicate argument " ++ s)
           peel name ad@(Arg { argData = Nothing, argIndex = index }) argl = do
               am' <- add_entry name am (index, ArgvalFlag)
               return (argl, (am', rest))
           peel name (Arg { argData = Just (DataArg {}) }) [] =
-              pe (name ++ " is missing its argument")
+              parse_error usage (name ++ " is missing its argument")
           peel name ad@(Arg { argData = Just (DataArg {
                                 dataArgArgtype = atype }),
                               argIndex = index })
