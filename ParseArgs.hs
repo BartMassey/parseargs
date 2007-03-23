@@ -260,16 +260,17 @@ parseArgs complete argd argv = do
             (replicate (n - (length s)) ' ') ++
             "  " ++ (argDesc a) ++ "\n"
     --- simple recursive-descent parser
-    parse _ _ _ av@(_, posn, []) [] = return ([], av)
+    parse _ _ _ av@(_, _, []) [] = return ([], av)
     parse usage _ _ av [] =
         case complete of
           ArgsComplete -> parse_error usage "unexpected extra arguments"
           _ -> return ([], av)
-    parse usage name_hash abbr_hash (am, posn, rest) (aa : aas) =
+    parse usage name_hash abbr_hash (am, posn, rest) av@(aa : aas) =
         case aa of
           "--" -> case complete of
                     ArgsComplete -> parse_error usage
-                                    "unexpected -- (extra arguments not allowed)"
+                                      ("unexpected -- " ++
+                                      "(extra arguments not allowed)")
                     _ -> return ([], (am, posn, (rest ++ aas)))
           s@('-' : '-' : name) ->
               case Map.lookup name name_hash of
@@ -296,7 +297,15 @@ parseArgs complete argd argv = do
                                   (am, posn, rest ++ [['-', abbr]]))
                       _ -> parse_error usage
                            ("unknown argument -" ++ [abbr])
-          _ -> parse_error usage "not handled yet" ---HERE
+          aa -> case posn of
+                  (ad@(Arg { argData = Just adata }) : ps) -> do
+                          (argl', (am', _, rest')) <-
+                              peel_process (dataArgName adata) ad av
+                          return (argl', (am', ps, rest'))
+                  [] -> case complete of
+                          ArgsComplete -> parse_error usage
+                                          ("unexpected argument " ++ aa)
+                          _ -> return (aas, (am, [], rest ++ [aa]))
         where
           add_entry s m (k, a) =
               case Map.member k m of
@@ -307,9 +316,10 @@ parseArgs complete argd argv = do
               return (argl, (am', posn, rest))
           peel name (Arg { argData = Just (DataArg {}) }) [] =
               parse_error usage (name ++ " is missing its argument")
-          peel name
+          peel name ad argl = peel_process name ad argl
+          peel_process name
                ad@(Arg { argData = Just (DataArg {
-                         dataArgArgtype = atype }),
+                                     dataArgArgtype = atype }),
                          argIndex = index })
                (a : argl) = do
                  let v = case atype of

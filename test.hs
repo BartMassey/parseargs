@@ -4,6 +4,7 @@ where
 import ParseArgs
 import System.Environment
 import Control.Monad
+import Data.Maybe
 
 data Options =
     OptionFlag |
@@ -60,3 +61,4 @@ main = do
   case (getArgInt args OptionFlagInt) of
     Just d -> putStrLn ("saw int " ++ (show d))
     Nothing -> return ()
+  putStrLn ("saw fixed " ++ (fromJust (getArgString args OptionFixed)))
