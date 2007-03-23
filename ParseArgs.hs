@@ -178,7 +178,7 @@ data ArgsComplete =
     ArgsTrailing |   --- trailing extraneous arguments OK
     ArgsInterspersed   --- any extraneous arguments OK
 
---- The function f is given a state s and a list l, and expected
+--- The function f is given a state s and a list [e], and expected
 --- to produce a new state and a shorter list.  completeIO iterates
 --- f until l is empty and returns the final state.
 completeIO :: (s -> [e] -> IO ([e], s)) -> s -> [e] -> IO s
@@ -210,9 +210,9 @@ parseArgs complete argd argv = do
   pathname <- getProgName
   let prog_name = baseName pathname
   let usage = make_usage_string prog_name
-  (am, rest) <- completeIO (parse usage name_hash abbr_hash)
-                           (Map.empty, [])
-                           argv
+  (am, posn, rest) <- completeIO (parse usage name_hash abbr_hash)
+                                 (Map.empty, posn_args, [])
+                                 argv
   return (Args { args = am,
                  argsProgName = prog_name,
                  argsUsage = usage,
@@ -260,24 +260,24 @@ parseArgs complete argd argv = do
             (replicate (n - (length s)) ' ') ++
             "  " ++ (argDesc a) ++ "\n"
     --- simple recursive-descent parser
-    parse _ _ _ av@(_, []) [] = return ([], av)
+    parse _ _ _ av@(_, posn, []) [] = return ([], av)
     parse usage _ _ av [] =
         case complete of
           ArgsComplete -> parse_error usage "unexpected extra arguments"
           _ -> return ([], av)
-    parse usage name_hash abbr_hash (am, rest) (aa : aas) =
+    parse usage name_hash abbr_hash (am, posn, rest) (aa : aas) =
         case aa of
           "--" -> case complete of
                     ArgsComplete -> parse_error usage
                                     "unexpected -- (extra arguments not allowed)"
-                    _ -> return ([], (am, (rest ++ aas)))
+                    _ -> return ([], (am, posn, (rest ++ aas)))
           s@('-' : '-' : name) ->
               case Map.lookup name name_hash of
                 Just ad -> peel s ad aas
                 Nothing ->
                     case complete of
                       ArgsInterspersed ->
-                          return (aas, (am, rest ++ ["--" ++ name]))
+                          return (aas, (am, posn, rest ++ ["--" ++ name]))
                       _ -> parse_error usage
                            ("unknown argument --" ++ name)
           ('-' : abbr : abbrs) ->
@@ -293,10 +293,10 @@ parseArgs complete argd argv = do
                     case complete of
                       ArgsInterspersed ->
                           return (['-' : abbrs] ++ aas,
-                                  (am, rest ++ [['-', abbr]]))
+                                  (am, posn, rest ++ [['-', abbr]]))
                       _ -> parse_error usage
                            ("unknown argument -" ++ [abbr])
-          _ -> parse_error usage "not handled yet"
+          _ -> parse_error usage "not handled yet" ---HERE
         where
           add_entry s m (k, a) =
               case Map.member k m of
@@ -304,21 +304,22 @@ parseArgs complete argd argv = do
                 True -> parse_error usage ("duplicate argument " ++ s)
           peel name ad@(Arg { argData = Nothing, argIndex = index }) argl = do
               am' <- add_entry name am (index, ArgvalFlag)
-              return (argl, (am', rest))
+              return (argl, (am', posn, rest))
           peel name (Arg { argData = Just (DataArg {}) }) [] =
               parse_error usage (name ++ " is missing its argument")
-          peel name ad@(Arg { argData = Just (DataArg {
-                                dataArgArgtype = atype }),
-                              argIndex = index })
+          peel name
+               ad@(Arg { argData = Just (DataArg {
+                         dataArgArgtype = atype }),
+                         argIndex = index })
                (a : argl) = do
-                 v <- case atype of
-                        ArgtypeString _ -> return (ArgvalString a)
-                        ArgtypeInteger _ -> return (ArgvalInteger (read a))
-                        ArgtypeInt _ -> return (ArgvalInt (read a))
-                        ArgtypeDouble _ -> return (ArgvalDouble (read a))
-                        ArgtypeFloat _ -> return (ArgvalFloat (read a))
+                 let v = case atype of
+                           ArgtypeString _ -> ArgvalString a
+                           ArgtypeInteger _ -> ArgvalInteger (read a)
+                           ArgtypeInt _ -> ArgvalInt (read a)
+                           ArgtypeDouble _ -> ArgvalDouble (read a)
+                           ArgtypeFloat _ -> ArgvalFloat (read a)
                  am' <- add_entry name am (index, v)
-                 return (argl, (am', rest))
+                 return (argl, (am', posn, rest))
 
 --- True if the arg was present.  Works on all types
 gotArg :: (Ord a) => Args a -> a -> Bool
