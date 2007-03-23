@@ -62,3 +62,6 @@ main = do
     Just d -> putStrLn ("saw int " ++ (show d))
     Nothing -> return ()
   putStrLn ("saw fixed " ++ (fromJust (getArgString args OptionFixed)))
+  case (getArgString args OptionOptional) of
+    Just s -> putStrLn ("saw optional " ++ s)
+    Nothing -> return ()

@@ -213,11 +213,18 @@ parseArgs complete argd argv = do
   (am, posn, rest) <- completeIO (parse usage name_hash abbr_hash)
                                  (Map.empty, posn_args, [])
                                  argv
+  let required_args = filter (not . arg_optional) argd
+  mapM_ (check_present usage am) required_args
   return (Args { args = am,
                  argsProgName = prog_name,
                  argsUsage = usage,
                  argsRest = rest })
   where
+    check_present usage am ad@(Arg { argIndex = k }) =
+        case Map.lookup k am of
+          Just _ -> return ()
+          Nothing -> parse_error usage ("missing required argument " ++
+                                        (arg_string ad))
     --- Check for various possible misuses.
     check_argd = do
       --- Order must be flags, posn args, optional posn args
