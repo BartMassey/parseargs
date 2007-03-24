@@ -181,11 +181,11 @@ data ArgsComplete =
 --- The function f is given a state s and a list [e], and expected
 --- to produce a new state and a shorter list.  completeIO iterates
 --- f until l is empty and returns the final state.
-completeIO :: (s -> [e] -> IO ([e], s)) -> s -> [e] -> IO s
-completeIO f s [] = return s
-completeIO f s l = do
+completeM :: (Monad m) => (s -> [e] -> m ([e], s)) -> s -> [e] -> m s
+completeM f s [] = return s
+completeM f s l = do
   (l', s') <- f s l
-  completeIO f s' l'
+  completeM f s' l'
 
 --- XXX Hooray for restricted polymorphism!
 --- Print an error message during parsing.
@@ -210,9 +210,9 @@ parseArgs complete argd argv = do
   pathname <- getProgName
   let prog_name = baseName pathname
   let usage = make_usage_string prog_name
-  (am, posn, rest) <- completeIO (parse usage name_hash abbr_hash)
-                                 (Map.empty, posn_args, [])
-                                 argv
+  (am, posn, rest) <- completeM (parse usage name_hash abbr_hash)
+                                (Map.empty, posn_args, [])
+                                argv
   let required_args = filter (not . arg_optional) argd
   mapM_ (check_present usage am) required_args
   return (Args { args = am,
