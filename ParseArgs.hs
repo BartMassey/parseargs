@@ -4,6 +4,12 @@
 --- Copyright (C) 2007 Bart Massey
 --- ALL RIGHTS RESERVED
 
+-- | This module supplies an argument parser parseArgs.
+-- | Given a description of type [Arg] of the legal
+-- | arguments to the program, a list of argument strings,
+-- | and a bit of extra information, parseArgs returns an
+-- | Args data structure suitable for querying using the
+-- | provided functions gotArg, getArgString, etc.
 module ParseArgs (Argtype(..), DataArg(..), Arg(..),
                   ArgsComplete(..),
                   ArgRecord, Args(..),
