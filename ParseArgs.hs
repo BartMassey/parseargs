@@ -21,7 +21,6 @@ where
 import Data.List
 import qualified Data.Map as Map
 import Control.Monad
-import System.IO
 import Data.Maybe
 import System.Environment
 
@@ -152,19 +151,19 @@ filter_keys l =
 
 --- Fail with an error if the argument description is bad
 --- for some reason.
-argdesc_error :: String -> IO a
+argdesc_error :: String -> a
 argdesc_error msg =
     error ("internal error: argument description: " ++ msg)
 
 --- Make a keymap.
 keymap_from_list :: (Ord k, Show k) =>
-                    [ (k, a) ] -> IO (Map.Map k a)
+                    [ (k, a) ] -> Map.Map k a
 keymap_from_list l =
-    foldM add_entry Map.empty l
+    foldl add_entry Map.empty l
     where
       add_entry m (k, a) = 
           case Map.member k m of
-            False -> return (Map.insert k a m)
+            False -> Map.insert k a m
             True -> argdesc_error ("duplicate argument description name " ++
                                    (show k))
 
@@ -172,7 +171,7 @@ keymap_from_list l =
 make_keymap :: (Ord a, Ord k, Show k) =>
                ((Arg a) -> Maybe k) ->
                [ Arg a ] ->
-               IO (Map.Map k (Arg a))
+               (Map.Map k (Arg a))
 make_keymap f_field args =
     (keymap_from_list .
      filter_keys .
@@ -184,51 +183,52 @@ data ArgsComplete =
     ArgsTrailing |   --- trailing extraneous arguments OK
     ArgsInterspersed   --- any extraneous arguments OK
 
---- The function f is given a state s and a list [e], and expected
---- to produce a new state and a shorter list.  completeIO iterates
---- f until l is empty and returns the final state.
-completeM :: (Monad m) => (s -> [e] -> m ([e], s)) -> s -> [e] -> m s
-completeM f s [] = return s
-completeM f s l = do
-  (l', s') <- f s l
-  completeM f s' l'
+--- The function f is given a state s and a list [e], and
+--- expected to produce a new state and list.  complete
+--- iterates f until l is empty and returns the final state.
+complete :: (s -> [e] -> ([e], s)) -> s -> [e] -> s
+complete f s [] = s
+complete f s l =
+  let (l', s') = f s l
+  in complete f s' l'
 
 --- XXX Hooray for restricted polymorphism!
 --- Print an error message during parsing.
-parse_error :: String -> String -> IO a
-parse_error usage msg = do
-  hPutStrLn stderr usage
-  error msg
+parse_error :: String -> String -> a
+parse_error usage msg =
+  error (usage ++ "\n" ++ msg)
 
 --- Given a description of the arguments, parseArgs produces
 --- a map from the arguments to their "values" and some other
 --- useful byproducts.  Sadly, we're trapped in the IO monad
---- by wanting to report usage errors.
+--- by getProgramName; this is silly, and will be changed.
 parseArgs :: (Show a, Ord a) =>
              ArgsComplete -> [ Arg a ] -> [ String ] ->
              IO (Args a)
-parseArgs complete argd argv = do
+parseArgs acomplete argd argv = do
   check_argd
   let flag_args = takeWhile arg_flag argd
   let posn_args = dropWhile arg_flag argd
-  name_hash <- make_keymap argName flag_args
-  abbr_hash <- make_keymap argAbbr flag_args
+  let name_hash = make_keymap argName flag_args
+  let abbr_hash = make_keymap argAbbr flag_args
   pathname <- getProgName
   let prog_name = baseName pathname
   let usage = make_usage_string prog_name
-  (am, posn, rest) <- completeM (parse usage name_hash abbr_hash)
-                                (Map.empty, posn_args, [])
-                                argv
+  let (am, posn, rest) = complete (parse usage name_hash abbr_hash)
+                                  (Map.empty, posn_args, [])
+                                  argv
   let required_args = filter (not . arg_optional) argd
-  mapM_ (check_present usage am) required_args
-  return (Args { args = am,
-                 argsProgName = prog_name,
-                 argsUsage = usage,
-                 argsRest = rest })
+  if and (map (check_present usage am) required_args) then
+      return (Args { args = am,
+                     argsProgName = prog_name,
+                     argsUsage = usage,
+                     argsRest = rest })
+      else
+          error "internal error"
   where
     check_present usage am ad@(Arg { argIndex = k }) =
         case Map.lookup k am of
-          Just _ -> return ()
+          Just _ -> True
           Nothing -> parse_error usage ("missing required argument " ++
                                         (arg_string ad))
     --- Check for various possible misuses.
@@ -257,7 +257,7 @@ parseArgs complete argd argv = do
                " [options]") ++
       (perhaps (not (null posn_args))
                (" " ++ (unwords (map arg_string posn_args)))) ++
-      (case complete of
+      (case acomplete of
          ArgsComplete -> ""
          _ -> " [--] ...") ++
       "\n" ++
@@ -273,60 +273,60 @@ parseArgs complete argd argv = do
             (replicate (n - (length s)) ' ') ++
             "  " ++ (argDesc a) ++ "\n"
     --- simple recursive-descent parser
-    parse _ _ _ av@(_, _, []) [] = return ([], av)
+    parse _ _ _ av@(_, _, []) [] = ([], av)
     parse usage _ _ av [] =
-        case complete of
+        case acomplete of
           ArgsComplete -> parse_error usage "unexpected extra arguments"
-          _ -> return ([], av)
+          _ -> ([], av)
     parse usage name_hash abbr_hash (am, posn, rest) av@(aa : aas) =
         case aa of
-          "--" -> case complete of
+          "--" -> case acomplete of
                     ArgsComplete -> parse_error usage
                                       ("unexpected -- " ++
                                       "(extra arguments not allowed)")
-                    _ -> return ([], (am, posn, (rest ++ aas)))
+                    _ -> ([], (am, posn, (rest ++ aas)))
           s@('-' : '-' : name) ->
               case Map.lookup name name_hash of
                 Just ad -> peel s ad aas
                 Nothing ->
-                    case complete of
+                    case acomplete of
                       ArgsInterspersed ->
-                          return (aas, (am, posn, rest ++ ["--" ++ name]))
+                          (aas, (am, posn, rest ++ ["--" ++ name]))
                       _ -> parse_error usage
                            ("unknown argument --" ++ name)
           ('-' : abbr : abbrs) ->
               case Map.lookup abbr abbr_hash of
-                Just ad -> do
-                  p@(args', state') <- peel ['-', abbr] ad aas
-                  case abbrs of
-                    [] -> return p
+                Just ad ->
+                  let p@(args', state') = peel ['-', abbr] ad aas
+                  in case abbrs of
+                    [] -> p
                     ('-' : _) -> parse_error usage
                                  ("bad internal '-' in argument " ++ aa)
-                    _ -> return (['-' : abbrs] ++ args', state')
+                    _ -> (['-' : abbrs] ++ args', state')
                 Nothing ->
-                    case complete of
+                    case acomplete of
                       ArgsInterspersed ->
-                          return (['-' : abbrs] ++ aas,
-                                  (am, posn, rest ++ [['-', abbr]]))
+                          (['-' : abbrs] ++ aas,
+                           (am, posn, rest ++ [['-', abbr]]))
                       _ -> parse_error usage
                            ("unknown argument -" ++ [abbr])
           aa -> case posn of
-                  (ad@(Arg { argData = Just adata }) : ps) -> do
-                          (argl', (am', _, rest')) <-
-                              peel_process (dataArgName adata) ad av
-                          return (argl', (am', ps, rest'))
-                  [] -> case complete of
+                  (ad@(Arg { argData = Just adata }) : ps) ->
+                          let (argl', (am', _, rest')) =
+                                  peel_process (dataArgName adata) ad av
+                          in (argl', (am', ps, rest'))
+                  [] -> case acomplete of
                           ArgsComplete -> parse_error usage
                                           ("unexpected argument " ++ aa)
-                          _ -> return (aas, (am, [], rest ++ [aa]))
+                          _ -> (aas, (am, [], rest ++ [aa]))
         where
           add_entry s m (k, a) =
               case Map.member k m of
-                False -> return (Map.insert k a m)
+                False -> Map.insert k a m
                 True -> parse_error usage ("duplicate argument " ++ s)
-          peel name ad@(Arg { argData = Nothing, argIndex = index }) argl = do
-              am' <- add_entry name am (index, ArgvalFlag)
-              return (argl, (am', posn, rest))
+          peel name ad@(Arg { argData = Nothing, argIndex = index }) argl =
+              let am' = add_entry name am (index, ArgvalFlag)
+              in (argl, (am', posn, rest))
           peel name (Arg { argData = Just (DataArg {}) }) [] =
               parse_error usage (name ++ " is missing its argument")
           peel name ad argl = peel_process name ad argl
@@ -334,15 +334,15 @@ parseArgs complete argd argv = do
                ad@(Arg { argData = Just (DataArg {
                                      dataArgArgtype = atype }),
                          argIndex = index })
-               (a : argl) = do
+               (a : argl) =
                  let v = case atype of
                            ArgtypeString _ -> ArgvalString a
                            ArgtypeInteger _ -> ArgvalInteger (read a)
                            ArgtypeInt _ -> ArgvalInt (read a)
                            ArgtypeDouble _ -> ArgvalDouble (read a)
                            ArgtypeFloat _ -> ArgvalFloat (read a)
-                 am' <- add_entry name am (index, v)
-                 return (argl, (am', posn, rest))
+                     am' = add_entry name am (index, v)
+                 in (argl, (am', posn, rest))
 
 --- True if the arg was present.  Works on all types
 gotArg :: (Ord a) => Args a -> a -> Bool
