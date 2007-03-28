@@ -13,7 +13,7 @@
 module ParseArgs (Argtype(..), DataArg(..), Arg(..),
                   ArgsComplete(..),
                   ArgRecord, Args(..),
-                  baseName, parseArgs,
+                  baseName, parseArgs, parseArgsIO,
                   gotArg, getArgString, getArgInteger, getArgInt,
                   getArgDouble, getArgFloat)
 where
@@ -348,6 +348,19 @@ parseArgs acomplete argd pathname argv =
                            ArgtypeFloat _ -> ArgvalFloat (read a)
                      am' = add_entry name am (index, v)
                  in (argl, (am', posn, rest))
+
+
+--- Most of the time, you just want the environment's
+--- arguments and are willing to live in the IO monad.
+parseArgsIO :: (Show a, Ord a) =>
+               ArgsComplete ->  --- degree of completeness
+               [ Arg a ] ->     --- argument descriptions
+               IO (Args a)      --- resulting parse
+parseArgsIO acomplete argd = do
+  argv <- getArgs
+  pathname <- getProgName
+  return (parseArgs acomplete argd pathname argv)
+
 
 --- True if the arg was present.  Works on all types
 gotArg :: (Ord a) => Args a -> a -> Bool

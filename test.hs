@@ -50,9 +50,7 @@ argd = [ Arg { argIndex = OptionFlag,
                argDesc = "Test optional string" }]
 
 main = do
-  argv <- getArgs
-  pathname <- getProgName
-  let args = parseArgs ArgsComplete argd pathname argv
+  args <- parseArgsIO ArgsComplete argd
   putStrLn "parse successful"
   when (gotArg args OptionFlag)
        (putStrLn "saw flag")
