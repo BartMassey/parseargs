@@ -13,8 +13,11 @@
 module ParseArgs (Argtype(..), DataArg(..), Arg(..),
                   ArgsComplete(..),
                   ArgRecord, Args(..),
-                  baseName, parseArgs, parseArgsIO,
-                  gotArg, getArgString, getArgInteger, getArgInt,
+                  baseName,
+                  parseArgs, parseArgsIO,
+                  gotArg,
+                  getArgString, getArgFile, getArgStdio,
+                  getArgInteger, getArgInt,
                   getArgDouble, getArgFloat)
 where
 
@@ -24,6 +27,7 @@ import Control.Monad
 import Data.Maybe
 import System.Environment
 import Control.Monad.ST.Lazy
+import System.IO
 
 --- The main job of this module is to provide parseArgs.
 --- See below for its contract.
@@ -376,6 +380,29 @@ getArgString (Args { args = am }) k =
       Just (ArgvalString s) -> Just s
       Nothing -> Nothing
       _ -> error ("internal error: getArgString " ++ (show k))
+
+--- treat the String, if any, of the given argument as
+--- a file handle and try to open it as requested
+getArgFile :: (Show a, Ord a) => Args a -> a -> IOMode -> Maybe (IO Handle)
+getArgFile args k m =
+    case getArgString args k of
+      Just s -> Just (openFile s m)
+      Nothing -> Nothing
+
+--- Treat the String, if any, of the given argument as a
+--- file handle and try to open it as requested.  If not
+--- present, substitute the appropriate one of stdin or
+--- stdout as indicated by IOMode
+getArgStdio :: (Show a, Ord a) => Args a -> a -> IOMode -> IO Handle
+getArgStdio args k m =
+    case getArgFile args k m of
+      Just h -> h
+      Nothing -> case m of
+                   ReadMode -> return stdin
+                   WriteMode -> return stdout
+                   AppendMode -> return stdout
+                   ReadWriteMode -> error ("internal error: getArgStdio " ++
+                                           "called with ReadWriteMode")
 
 --- return the Integer, if any, of the given argument
 getArgInteger :: (Show a, Ord a) => Args a -> a -> Maybe Integer
