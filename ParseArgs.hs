@@ -23,6 +23,7 @@ import qualified Data.Map as Map
 import Control.Monad
 import Data.Maybe
 import System.Environment
+import Control.Monad.ST.Lazy
 
 --- The main job of this module is to provide parseArgs.
 --- See below for its contract.
@@ -200,31 +201,33 @@ parse_error usage msg =
 
 --- Given a description of the arguments, parseArgs produces
 --- a map from the arguments to their "values" and some other
---- useful byproducts.  Sadly, we're trapped in the IO monad
---- by getProgramName; this is silly, and will be changed.
+--- useful byproducts.
 parseArgs :: (Show a, Ord a) =>
-             ArgsComplete -> [ Arg a ] -> [ String ] ->
-             IO (Args a)
-parseArgs acomplete argd argv = do
-  check_argd
-  let flag_args = takeWhile arg_flag argd
-  let posn_args = dropWhile arg_flag argd
-  let name_hash = make_keymap argName flag_args
-  let abbr_hash = make_keymap argAbbr flag_args
-  pathname <- getProgName
-  let prog_name = baseName pathname
-  let usage = make_usage_string prog_name
-  let (am, posn, rest) = complete (parse usage name_hash abbr_hash)
+             ArgsComplete ->  --- degree of completeness
+             [ Arg a ] ->     --- argument descriptions
+             String ->        --- program pathname
+             [ String ] ->    --- argument list
+             Args a           --- resulting parse
+parseArgs acomplete argd pathname argv =
+  runST (do
+           check_argd
+           let flag_args = takeWhile arg_flag argd
+           let posn_args = dropWhile arg_flag argd
+           let name_hash = make_keymap argName flag_args
+           let abbr_hash = make_keymap argAbbr flag_args
+           let prog_name = baseName pathname
+           let usage = make_usage_string prog_name
+           let (am, posn, rest) = complete (parse usage name_hash abbr_hash)
                                   (Map.empty, posn_args, [])
                                   argv
-  let required_args = filter (not . arg_optional) argd
-  if and (map (check_present usage am) required_args) then
-      return (Args { args = am,
-                     argsProgName = prog_name,
-                     argsUsage = usage,
-                     argsRest = rest })
-      else
-          error "internal error"
+           let required_args = filter (not . arg_optional) argd
+           if and (map (check_present usage am) required_args) then
+                   return (Args { args = am,
+                                  argsProgName = prog_name,
+                                  argsUsage = usage,
+                                  argsRest = rest })
+               else
+                   error "internal error")
   where
     check_present usage am ad@(Arg { argIndex = k }) =
         case Map.lookup k am of
@@ -232,6 +235,7 @@ parseArgs acomplete argd argv = do
           Nothing -> parse_error usage ("missing required argument " ++
                                         (arg_string ad))
     --- Check for various possible misuses.
+    check_argd :: ST s ()
     check_argd = do
       --- Order must be flags, posn args, optional posn args
       let residue = dropWhile arg_flag argd
@@ -242,6 +246,7 @@ parseArgs acomplete argd argv = do
       --- No argument may be "nullary".
       when (or (map arg_nullary argd))
            (argdesc_error "bogus 'nothing' argument")
+      return ()
       where
         arg_fixed_posn a = (arg_posn a) && (not (arg_optional a))
         arg_opt_posn a = (arg_posn a) && (arg_optional a)
