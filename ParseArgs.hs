@@ -4,13 +4,14 @@
 --- Copyright (C) 2007 Bart Massey
 --- ALL RIGHTS RESERVED
 
--- | This module supplies an argument parser parseArgs.
--- | Given a description of type [Arg] of the legal
--- | arguments to the program, a list of argument strings,
--- | and a bit of extra information, parseArgs returns an
--- | Args data structure suitable for querying using the
--- | provided functions gotArg, getArgString, etc.
-module ParseArgs (Argtype(..), DataArg(..), Arg(..),
+-- |This module supplies an argument parser parseArgs.
+-- Given a description of type ['Arg'] of the legal
+-- arguments to the program, a list of argument strings,
+-- and a bit of extra information, the 'parseArgs' function
+-- in this module returns an
+-- 'Args' data structure suitable for querying using the
+-- provided functions 'gotArg', 'getArgString', etc.
+module ParseArgs (Argtype(..), DataArg, Arg(..),
                   ArgsComplete(..),
                   ArgRecord, Args(..),
                   baseName,
@@ -37,38 +38,35 @@ import System.IO
 --- provided datatypes
 ---
 
---- The types of arguments carrying data;
---- the constructor arguments are for default values
+-- |The types of arguments carrying data;
+-- the constructor arguments are for default values.
 data Argtype = ArgtypeString (Maybe String)
              | ArgtypeInteger (Maybe Integer)
              | ArgtypeInt (Maybe Int)
              | ArgtypeDouble (Maybe Double)
              | ArgtypeFloat (Maybe Float)
 
---- Information specific to an argument carrying data
+-- |Information specific to an argument carrying datum.
 data DataArg = DataArg { dataArgName :: String,
                          dataArgArgtype :: Argtype,
                          dataArgOptional :: Bool }
 
---- The description of an argument, suitable for
---- messages and for parsing.
----
---- XXX ugly representation
---- There are three cases:
----     1) The argument is a flag, in which case at least
----     one of argAbbr and argName is provided.
----        1.1) The flag itself requires an argument, in
----        which case argData is also provided.
----     2) The argument is positional, in which case neither
----     argAbbr nor argName are provided, but argData is
----     provided.
---- If none of argAbbr, argName, argData are provided, this
---- is an error.
---- In case 1.1 or 2, the dataArgOptional field of
---- argData determines whether the given flag or
---- positional argument must appear.  Obviously, all
---- flags are optional.
-
+-- |The description of an argument, suitable for
+-- messages and for parsing.  The 'argData' field
+-- is used both for flags with a data argument, and
+-- for positional data arguments.
+-- 
+-- There are two cases:
+--     1) The argument is a flag, in which case at least
+--     one of 'argAbbr' and 'argName' is provided;
+--     2) The argument is positional, in which case neither
+--     'argAbbr' nor 'argName' are provided, but 'argData' is.
+-- 
+-- If none of 'argAbbr', 'argName', or 'argData' are
+-- provided, this is an error.  See also the
+-- 'argDataRequired', 'argDataOptional', and
+-- 'argDataDefault' functions below, which are used to
+-- generate 'argData'.
 data (Ord a) => Arg a =
     Arg { argIndex :: a,
           argAbbr :: Maybe Char,
@@ -80,7 +78,7 @@ data (Ord a) => Arg a =
 --- returned datatypes
 ---
 
---- The kinds of "value" an argument can have.
+-- |The "kinds of values" an argument can have.
 data Argval = ArgvalFlag
             | ArgvalString String
             | ArgvalInteger Integer
@@ -88,9 +86,11 @@ data Argval = ArgvalFlag
             | ArgvalDouble Double
             | ArgvalFloat Float
 
+-- |The type of the argument map.  (It may not always be a map.)
 type ArgRecord a = Map.Map a Argval
 
---- The data structure parseArgs produces.
+-- |The data structure 'parseArgs' produces.  The key
+-- element is the 'ArgRecord' 'args'.
 data (Ord a) => Args a =
     Args { args :: ArgRecord a,
            argsProgName :: String,
@@ -101,34 +101,34 @@ data (Ord a) => Args a =
 --- Implementation
 ---
 
---- Return the filename part of 'path'.
---- Unnecessarily efficient implementation does a single
---- tail-call traversal with no construction.
+-- |Return the filename part of 'path'.
+-- Unnecessarily efficient implementation does a single
+-- tail-call traversal with no construction.
 baseName :: String -> String
 baseName s =
     let s' = dropWhile (/= '/') s in
     if null s' then s else baseName (tail s')
 
 
---- True if the described argument is positional
+-- |True if the described argument is positional
 arg_posn :: (Ord a) => Arg a -> Bool
 arg_posn (Arg { argAbbr = Nothing,
                 argName = Nothing }) = True
 arg_posn _ = False
 
---- True if the described argument is a flag
+-- |True if the described argument is a flag
 arg_flag :: (Ord a) => Arg a -> Bool
 arg_flag a = not (arg_posn a)
 
---- True if the described argument is optional
+-- |True if the described argument is optional
 arg_optional :: (Ord a) => Arg a -> Bool
 arg_optional (Arg { argData = Just (DataArg { dataArgOptional = b }) }) = b
 arg_optional _ = True
 
---- There's probably a better way to do this
+-- |There's probably a better way to do this
 perhaps b s = if b then s else ""
 
---- Format the described argument as a string
+-- |Format the described argument as a string.
 arg_string :: (Ord a) => Arg a -> String
 arg_string a@(Arg { argAbbr = abbr,
                     argName = name,
@@ -147,7 +147,7 @@ arg_string a@(Arg { argAbbr = abbr,
       flag_abbr c = [ '-', c ]
       data_arg (DataArg {dataArgName = s}) = "<" ++ s ++ ">"
 
---- Filter out the empty keys for a hash.
+-- |Filter out the empty keys for a hash.
 filter_keys :: [ (Maybe a, b) ] -> [ (a, b) ]
 filter_keys l =
     foldr check_key [] l
@@ -155,13 +155,13 @@ filter_keys l =
       check_key (Nothing, _) rest = rest
       check_key (Just k, v) rest = (k, v) : rest
 
---- Fail with an error if the argument description is bad
---- for some reason.
+-- |Fail with an error if the argument description is bad
+-- for some reason.
 argdesc_error :: String -> a
 argdesc_error msg =
     error ("internal error: argument description: " ++ msg)
 
---- Make a keymap.
+-- |Make a keymap.
 keymap_from_list :: (Ord k, Show k) =>
                     [ (k, a) ] -> Map.Map k a
 keymap_from_list l =
@@ -173,7 +173,7 @@ keymap_from_list l =
             True -> argdesc_error ("duplicate argument description name " ++
                                    (show k))
 
---- Make a keymap for looking up a flag argument.
+-- |Make a keymap for looking up a flag argument.
 make_keymap :: (Ord a, Ord k, Show k) =>
                ((Arg a) -> Maybe k) ->
                [ Arg a ] ->
@@ -183,30 +183,29 @@ make_keymap f_field args =
      filter_keys .
      map (\arg -> (f_field arg, arg))) args
 
---- What can be left over after the parse?
+-- |How "sloppy" the parse is.
 data ArgsComplete =
     ArgsComplete |   --- no extraneous arguments
     ArgsTrailing |   --- trailing extraneous arguments OK
     ArgsInterspersed   --- any extraneous arguments OK
 
---- The function f is given a state s and a list [e], and
---- expected to produce a new state and list.  complete
---- iterates f until l is empty and returns the final state.
-complete :: (s -> [e] -> ([e], s)) -> s -> [e] -> s
-complete f s [] = s
-complete f s l =
+-- |The function f is given a state s and a list [e], and
+-- expected to produce a new state and list.  complete
+-- iterates f until l is empty and returns the final state.
+exhaust :: (s -> [e] -> ([e], s)) -> s -> [e] -> s
+exhaust f s [] = s
+exhaust f s l =
   let (l', s') = f s l
-  in complete f s' l'
+  in exhaust f s' l'
 
---- XXX Hooray for restricted polymorphism!
---- Print an error message during parsing.
+-- |Print an error message during parsing.
 parse_error :: String -> String -> a
 parse_error usage msg =
   error (usage ++ "\n" ++ msg)
 
---- Given a description of the arguments, parseArgs produces
---- a map from the arguments to their "values" and some other
---- useful byproducts.
+-- |Given a description of the arguments, 'parseArgs' produces
+-- a map from the arguments to their "values" and some other
+-- useful byproducts.
 parseArgs :: (Show a, Ord a) =>
              ArgsComplete ->  --- degree of completeness
              [ Arg a ] ->     --- argument descriptions
@@ -222,7 +221,7 @@ parseArgs acomplete argd pathname argv =
            let abbr_hash = make_keymap argAbbr flag_args
            let prog_name = baseName pathname
            let usage = make_usage_string prog_name
-           let (am, posn, rest) = complete (parse usage name_hash abbr_hash)
+           let (am, posn, rest) = exhaust (parse usage name_hash abbr_hash)
                                   (Map.empty, posn_args, [])
                                   argv
            let required_args = filter (not . arg_optional) argd
@@ -355,8 +354,8 @@ parseArgs acomplete argd pathname argv =
                  in (argl, (am', posn, rest))
 
 
---- Most of the time, you just want the environment's
---- arguments and are willing to live in the IO monad.
+-- |Most of the time, you just want the environment's
+-- arguments and are willing to live in the IO monad.
 parseArgsIO :: (Show a, Ord a) =>
                ArgsComplete ->  --- degree of completeness
                [ Arg a ] ->     --- argument descriptions
@@ -367,14 +366,14 @@ parseArgsIO acomplete argd = do
   return (parseArgs acomplete argd pathname argv)
 
 
---- True if the arg was present.  Works on all types
+-- |True if the arg was present.  Works on all types.
 gotArg :: (Ord a) => Args a -> a -> Bool
 gotArg (Args { args = am }) k =
     case Map.lookup k am of
       Just _ -> True
       Nothing -> False
 
---- return the String, if any, of the given argument
+-- |Return the String, if any, of the given argument.
 getArgString :: (Show a, Ord a) => Args a -> a -> Maybe String
 getArgString (Args { args = am }) k =
     case Map.lookup k am of
@@ -382,18 +381,18 @@ getArgString (Args { args = am }) k =
       Nothing -> Nothing
       _ -> error ("internal error: getArgString " ++ (show k))
 
---- treat the String, if any, of the given argument as
---- a file handle and try to open it as requested
+-- |Treat the String, if any, of the given argument as
+-- a file handle and try to open it as requested.
 getArgFile :: (Show a, Ord a) => Args a -> a -> IOMode -> Maybe (IO Handle)
 getArgFile args k m =
     case getArgString args k of
       Just s -> Just (openFile s m)
       Nothing -> Nothing
 
---- Treat the String, if any, of the given argument as a
---- file handle and try to open it as requested.  If not
---- present, substitute the appropriate one of stdin or
---- stdout as indicated by IOMode
+-- |Treat the String, if any, of the given argument as a
+-- file handle and try to open it as requested.  If not
+-- present, substitute the appropriate one of stdin or
+-- stdout as indicated by IOMode.
 getArgStdio :: (Show a, Ord a) => Args a -> a -> IOMode -> IO Handle
 getArgStdio args k m =
     case getArgFile args k m of
@@ -405,7 +404,7 @@ getArgStdio args k m =
                    ReadWriteMode -> error ("internal error: getArgStdio " ++
                                            "called with ReadWriteMode")
 
---- return the Integer, if any, of the given argument
+-- |Return the Integer, if any, of the given argument.
 getArgInteger :: (Show a, Ord a) => Args a -> a -> Maybe Integer
 getArgInteger (Args { args = am }) k =
     case Map.lookup k am of
@@ -413,7 +412,7 @@ getArgInteger (Args { args = am }) k =
       Nothing -> Nothing
       _ -> error ("internal error: getArgInteger " ++ (show k))
 
---- return the Int, if any, of the given argument
+-- |Return the Int, if any, of the given argument.
 getArgInt :: (Show a, Ord a) => Args a -> a -> Maybe Int
 getArgInt (Args { args = am }) k =
     case Map.lookup k am of
@@ -421,7 +420,7 @@ getArgInt (Args { args = am }) k =
       Nothing -> Nothing
       _ -> error ("internal error: getArgInt " ++ (show k))
 
---- return the Double, if any, of the given argument
+-- |Return the Double, if any, of the given argument.
 getArgDouble :: (Show a, Ord a) => Args a -> a -> Maybe Double
 getArgDouble (Args { args = am }) k =
     case Map.lookup k am of
@@ -429,7 +428,7 @@ getArgDouble (Args { args = am }) k =
       Nothing -> Nothing
       _ -> error ("internal error: getArgDouble " ++ (show k))
 
---- return the Float, if any, of the given argument
+-- |Return the Float, if any, of the given argument.
 getArgFloat :: (Show a, Ord a) => Args a -> a -> Maybe Float
 getArgFloat (Args { args = am }) k =
     case Map.lookup k am of
@@ -437,16 +436,20 @@ getArgFloat (Args { args = am }) k =
       Nothing -> Nothing
       _ -> error ("internal error: getArgFloat " ++ (show k))
 
+-- |Generate the 'argData' for the given non-optional argument.
 argDataRequired :: String -> (Maybe a -> Argtype) -> Maybe DataArg
 argDataRequired s c = Just (DataArg { dataArgName = s,
                                       dataArgArgtype = c Nothing,
                                       dataArgOptional = False })
 
+-- |Generate the 'argData' for the given optional argument with no default.
 argDataOptional :: String -> (Maybe a -> Argtype) -> Maybe DataArg
 argDataOptional s c = Just (DataArg { dataArgName = s,
                                       dataArgArgtype = c Nothing,
                                       dataArgOptional = True })
 
+-- |Generate the 'argData' for the given optional argument with the
+-- given default.
 argDataDefaulted :: String -> (Maybe a -> Argtype) -> a -> Maybe DataArg
 argDataDefaulted s c d = Just (DataArg { dataArgName = s,
                                          dataArgArgtype = c (Just d),
