@@ -23,26 +23,22 @@ argd = [ Arg { argIndex = OptionFlag,
          Arg { argIndex = OptionFlagString,
                argName = Just "string-flag",
                argAbbr = Just 's',
-               argData = argDataOptional "test-value"
-                                         (ArgtypeString Nothing),
+               argData = argDataOptional "test-value" ArgtypeString,
                argDesc = "Test string flag" },
          Arg { argIndex = OptionFlagInt,
                argName = Just "int-flag",
                argAbbr = Nothing,
-               argData = argDataOptional "test-value"
-                                         (ArgtypeInt (Just 7)),
+               argData = argDataDefaulted "test-value" ArgtypeInt 7,
                argDesc = "Test int flag" },
          Arg { argIndex = OptionFixed,
                argName = Nothing,
                argAbbr = Nothing,
-               argData = argDataRequired "fixed"
-                                         (ArgtypeString Nothing),
+               argData = argDataRequired "fixed" ArgtypeString,
                argDesc = "Test fixed string" },
          Arg { argIndex = OptionOptional,
                argName = Nothing,
                argAbbr = Nothing,
-               argData = argDataOptional "optional"
-                                         (ArgtypeString Nothing),
+               argData = argDataOptional "optional" ArgtypeString,
                argDesc = "Test optional string" }]
 
 main = do
