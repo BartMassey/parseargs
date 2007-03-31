@@ -18,7 +18,8 @@ module ParseArgs (Argtype(..), DataArg(..), Arg(..),
                   gotArg,
                   getArgString, getArgFile, getArgStdio,
                   getArgInteger, getArgInt,
-                  getArgDouble, getArgFloat)
+                  getArgDouble, getArgFloat,
+                  argDataRequired, argDataOptional)
 where
 
 import Data.List
@@ -436,3 +437,12 @@ getArgFloat (Args { args = am }) k =
       Nothing -> Nothing
       _ -> error ("internal error: getArgFloat " ++ (show k))
 
+argDataRequired :: String -> Argtype -> Maybe DataArg
+argDataRequired s t = Just (DataArg { dataArgName = s,
+                                      dataArgArgtype = t,
+                                      dataArgOptional = False })
+
+argDataOptional :: String -> Argtype -> Maybe DataArg
+argDataOptional s t = Just (DataArg { dataArgName = s,
+                                      dataArgArgtype = t,
+                                      dataArgOptional = True })

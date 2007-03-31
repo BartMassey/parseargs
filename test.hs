@@ -23,30 +23,26 @@ argd = [ Arg { argIndex = OptionFlag,
          Arg { argIndex = OptionFlagString,
                argName = Just "string-flag",
                argAbbr = Just 's',
-               argData = Just (DataArg { dataArgName = "test-value",
-                                         dataArgArgtype = ArgtypeString Nothing,
-                                         dataArgOptional = True }),
+               argData = argDataOptional "test-value"
+                                         (ArgtypeString Nothing),
                argDesc = "Test string flag" },
          Arg { argIndex = OptionFlagInt,
                argName = Just "int-flag",
                argAbbr = Nothing,
-               argData = Just (DataArg { dataArgName = "test-value",
-                                         dataArgArgtype = ArgtypeInt (Just 7),
-                                         dataArgOptional = True }),
+               argData = argDataOptional "test-value"
+                                         (ArgtypeInt (Just 7)),
                argDesc = "Test int flag" },
          Arg { argIndex = OptionFixed,
                argName = Nothing,
                argAbbr = Nothing,
-               argData = Just (DataArg { dataArgName = "fixed",
-                                         dataArgArgtype = ArgtypeString Nothing,
-                                         dataArgOptional = False }),
+               argData = argDataRequired "fixed"
+                                         (ArgtypeString Nothing),
                argDesc = "Test fixed string" },
          Arg { argIndex = OptionOptional,
                argName = Nothing,
                argAbbr = Nothing,
-               argData = Just (DataArg { dataArgName = "optional",
-                                         dataArgArgtype = ArgtypeString Nothing,
-                                         dataArgOptional = True }),
+               argData = argDataOptional "optional"
+                                         (ArgtypeString Nothing),
                argDesc = "Test optional string" }]
 
 main = do
