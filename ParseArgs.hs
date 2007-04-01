@@ -4,23 +4,14 @@
 -- Copyright (C) 2007 Bart Massey
 -- ALL RIGHTS RESERVED
 
--- This library is free software; you can redistribute it
--- and/or modify it under the terms of version 2.1 of the
--- GNU Lesser General Public License as published by the
--- Free Software Foundation.
+-- You can redistribute and/or modify this library under the
+-- terms of the "3-clause BSD LICENSE", as stated in the file
+-- COPYING in the top-level directory of this distribution.
 -- 
 -- This library is distributed in the hope that it will be
 -- useful, but WITHOUT ANY WARRANTY; without even the
 -- implied warranty of MERCHANTABILITY or FITNESS FOR A
--- PARTICULAR PURPOSE.  See the GNU Lesser General Public
--- License for more details.
--- 
--- You should have received a copy of the GNU Lesser
--- General Public License along with this library (most
--- likely in the file COPYING in the top-level directory);
--- if not, write to the Free Software Foundation, Inc., 51
--- Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
-
+-- PARTICULAR PURPOSE.
 
 -- |This module supplies an argument parser.
 -- Given a description of type ['Arg'] of the legal
