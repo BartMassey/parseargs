@@ -1,8 +1,26 @@
---- Full-featured argument parser
---- Bart Massey 2007/01/06
----
---- Copyright (C) 2007 Bart Massey
---- ALL RIGHTS RESERVED
+-- Full-featured argument parsing library for Haskell programs
+-- Bart Massey <bart@cs.pdx.edu>
+
+-- Copyright (C) 2007 Bart Massey
+-- ALL RIGHTS RESERVED
+
+-- This library is free software; you can redistribute it
+-- and/or modify it under the terms of version 2.1 of the
+-- GNU Lesser General Public License as published by the
+-- Free Software Foundation.
+-- 
+-- This library is distributed in the hope that it will be
+-- useful, but WITHOUT ANY WARRANTY; without even the
+-- implied warranty of MERCHANTABILITY or FITNESS FOR A
+-- PARTICULAR PURPOSE.  See the GNU Lesser General Public
+-- License for more details.
+-- 
+-- You should have received a copy of the GNU Lesser
+-- General Public License along with this library (most
+-- likely in the file COPYING in the top-level directory);
+-- if not, write to the Free Software Foundation, Inc., 51
+-- Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
+
 
 -- |This module supplies an argument parser.
 -- Given a description of type ['Arg'] of the legal
@@ -12,36 +30,35 @@
 -- 'Args' data structure suitable for querying using the
 -- provided functions 'gotArg', 'getArgString', etc.
 module ParseArgs (
-                  -- * Describing allowed arguments
-                  -- |The argument parser requires a description of
-                  -- the arguments that will be parsed.  This is
-                  -- supplied as a list of 'Arg' records, built up
-                  -- using the functions described here.
-                  Argtype(..), DataArg, Arg(..),
-                  ArgsComplete(..),
-                  argDataRequired, argDataOptional, argDataDefaulted,
-                  -- * Argument processing
-                  -- |The argument descriptions are used to parse
-                  -- the command line arguments, and the results
-                  -- of the parse can later be (efficiently) queried
-                  -- to determine program behavior.
+  -- * Describing allowed arguments
+  -- |The argument parser requires a description of
+  -- the arguments that will be parsed.  This is
+  -- supplied as a list of 'Arg' records, built up
+  -- using the functions described here.
+  Argtype(..), DataArg, Arg(..),
+  ArgsComplete(..),
+  argDataRequired, argDataOptional, argDataDefaulted,
+  -- * Argument processing
+  -- |The argument descriptions are used to parse
+  -- the command line arguments, and the results
+  -- of the parse can later be (efficiently) queried
+  -- to determine program behavior.
 
-                  -- ** Getting parse results
-                  -- |The argument parser returns an opaque map
-                  -- from argument index to parsed argument data
-                  -- (plus some convenience information).
-                  ArgRecord, Args(..),
-                  parseArgs, parseArgsIO,
-                  -- ** Using parse results
-                  -- |Query functions permit checking for the existence
-                  -- and values of command-line arguments.
-                  gotArg,
-                  getArgString, getArgFile, getArgStdio,
-                  getArgInteger, getArgInt,
-                  getArgDouble, getArgFloat,
-                  -- * Misc
-                  baseName
-                 )
+  -- ** Getting parse results
+  -- |The argument parser returns an opaque map
+  -- from argument index to parsed argument data
+  -- (plus some convenience information).
+  ArgRecord, Args(..),
+  parseArgs, parseArgsIO,
+  -- ** Using parse results
+  -- |Query functions permit checking for the existence
+  -- and values of command-line arguments.
+  gotArg,
+  getArgString, getArgFile, getArgStdio,
+  getArgInteger, getArgInt,
+  getArgDouble, getArgFloat,
+  -- * Misc
+  baseName)
 where
 
 import Data.List
@@ -52,12 +69,12 @@ import System.Environment
 import Control.Monad.ST.Lazy
 import System.IO
 
---- The main job of this module is to provide parseArgs.
---- See below for its contract.
+-- The main job of this module is to provide parseArgs.
+-- See below for its contract.
 
----
---- Provided datatypes.
----
+--
+-- Provided datatypes.
+--
 
 -- |The types of arguments carrying data;
 -- the constructor arguments are for default values.
@@ -100,9 +117,9 @@ data (Ord a) => Arg a =
         , argDesc :: String          -- ^Documentation for the argument.
         } 
 
----
---- Returned datatypes.
----
+--
+-- Returned datatypes.
+--
 
 -- |The \"kinds of values\" an argument can have.
 data Argval = ArgvalFlag   -- ^For simple present vs not-present flags.
@@ -124,9 +141,9 @@ data (Ord a) => Args a =
          , argsRest :: [ String ]   -- ^Remaining unprocessed arguments.
          }
 
----
---- Implementation.
----
+--
+-- Implementation.
+--
 
 -- |Return the filename part of a pathname.
 -- Unnecessarily efficient implementation does a single
