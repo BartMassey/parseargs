@@ -89,7 +89,7 @@ data DataArg = DataArg { dataArgName :: String       -- ^Print name of datum.
 -- If none of 'argAbbr', 'argName', or 'argData' are
 -- provided, this is an error.  See also the
 -- 'argDataRequired', 'argDataOptional', and
--- 'argDataDefault' functions below, which are used to
+-- 'argDataDefaulted' functions below, which are used to
 -- generate 'argData'.
 data (Ord a) => Arg a =
     Arg { argIndex :: a              -- ^Connects the input description
@@ -128,7 +128,7 @@ data (Ord a) => Args a =
 --- Implementation.
 ---
 
--- |Return the filename part of 'path'.
+-- |Return the filename part of a pathname.
 -- Unnecessarily efficient implementation does a single
 -- tail-call traversal with no construction.
 baseName :: String   -- ^Pathname.
