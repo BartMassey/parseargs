@@ -4,23 +4,44 @@
 --- Copyright (C) 2007 Bart Massey
 --- ALL RIGHTS RESERVED
 
--- |This module supplies an argument parser parseArgs.
+-- |This module supplies an argument parser.
 -- Given a description of type ['Arg'] of the legal
 -- arguments to the program, a list of argument strings,
 -- and a bit of extra information, the 'parseArgs' function
 -- in this module returns an
 -- 'Args' data structure suitable for querying using the
 -- provided functions 'gotArg', 'getArgString', etc.
-module ParseArgs (Argtype(..), DataArg, Arg(..),
+module ParseArgs (
+                  -- * Describing allowed arguments
+                  -- |The argument parser requires a description of
+                  -- the arguments that will be parsed.  This is
+                  -- supplied as a list of 'Arg' records, built up
+                  -- using the functions described here.
+                  Argtype(..), DataArg, Arg(..),
                   ArgsComplete(..),
+                  argDataRequired, argDataOptional, argDataDefaulted,
+                  -- * Argument processing
+                  -- |The argument descriptions are used to parse
+                  -- the command line arguments, and the results
+                  -- of the parse can later be (efficiently) queried
+                  -- to determine program behavior.
+
+                  -- ** Getting parse results
+                  -- |The argument parser returns an opaque map
+                  -- from argument index to parsed argument data
+                  -- (plus some convenience information).
                   ArgRecord, Args(..),
-                  baseName,
                   parseArgs, parseArgsIO,
+                  -- ** Using parse results
+                  -- |Query functions permit checking for the existence
+                  -- and values of command-line arguments.
                   gotArg,
                   getArgString, getArgFile, getArgStdio,
                   getArgInteger, getArgInt,
                   getArgDouble, getArgFloat,
-                  argDataRequired, argDataOptional, argDataDefaulted)
+                  -- * Misc
+                  baseName
+                 )
 where
 
 import Data.List
@@ -58,9 +79,11 @@ data DataArg = DataArg { dataArgName :: String       -- ^Print name of datum.
 -- for positional data arguments.
 -- 
 -- There are two cases:
---     1) The argument is a flag, in which case at least
+--
+--     (1) The argument is a flag, in which case at least
 --     one of 'argAbbr' and 'argName' is provided;
---     2) The argument is positional, in which case neither
+--
+--     (2) The argument is positional, in which case neither
 --     'argAbbr' nor 'argName' are provided, but 'argData' is.
 -- 
 -- If none of 'argAbbr', 'argName', or 'argData' are
