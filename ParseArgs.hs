@@ -112,9 +112,8 @@ data Argval = ArgvalFlag   -- ^For simple present vs not-present flags.
             | ArgvalDouble Double
             | ArgvalFloat Float
 
--- |The type of the map from argument index to value.
--- (It may not always be a map.)
-type ArgRecord a = Map.Map a Argval
+-- |The type of the mapping from argument index to value.
+newtype ArgRecord a = ArgRecord (Map.Map a Argval)
 
 -- |The data structure 'parseArgs' produces.  The key
 -- element is the 'ArgRecord' 'args'.
@@ -279,7 +278,7 @@ parseArgs acomplete argd pathname argv =
                                   argv
            let required_args = filter (not . arg_optional) argd
            if and (map (check_present usage am) required_args) then
-                   return (Args { args = am,
+                   return (Args { args = ArgRecord am,
                                   argsProgName = prog_name,
                                   argsUsage = usage,
                                   argsRest = rest })
@@ -426,7 +425,7 @@ gotArg :: (Ord a) =>
           Args a    -- ^Parsed arguments.
        -> a         -- ^Index of argument to be checked for.
        -> Bool      -- ^True if the arg was present.
-gotArg (Args { args = am }) k =
+gotArg (Args { args = ArgRecord am }) k =
     case Map.lookup k am of
       Just _ -> True
       Nothing -> False
@@ -436,7 +435,7 @@ getArgString :: (Show a, Ord a) =>
                 Args a         -- ^Parsed arguments.
              -> a              -- ^Index of argument to be retrieved.
              -> Maybe String   -- ^Argument value if present.
-getArgString (Args { args = am }) k =
+getArgString (Args { args = ArgRecord am }) k =
     case Map.lookup k am of
       Just (ArgvalString s) -> Just s
       Nothing -> Nothing
@@ -480,7 +479,7 @@ getArgInteger :: (Show a, Ord a) =>
                  Args a          -- ^Parsed arguments.
               -> a               -- ^Index of argument to be retrieved.
               -> Maybe Integer   -- ^Argument value if present.
-getArgInteger (Args { args = am }) k =
+getArgInteger (Args { args = ArgRecord am }) k =
     case Map.lookup k am of
       Just (ArgvalInteger s) -> Just s
       Nothing -> Nothing
@@ -491,7 +490,7 @@ getArgInt :: (Show a, Ord a) =>
              Args a      -- ^Parsed arguments.
           -> a           -- ^Index of argument to be retrieved.
           -> Maybe Int   -- ^Argument value if present.
-getArgInt (Args { args = am }) k =
+getArgInt (Args { args = ArgRecord am }) k =
     case Map.lookup k am of
       Just (ArgvalInt s) -> Just s
       Nothing -> Nothing
@@ -502,7 +501,7 @@ getArgDouble :: (Show a, Ord a) =>
                 Args a         -- ^Parsed arguments.
              -> a              -- ^Index of argument to be retrieved.
              -> Maybe Double   -- ^Argument value if present.
-getArgDouble (Args { args = am }) k =
+getArgDouble (Args { args = ArgRecord am }) k =
     case Map.lookup k am of
       Just (ArgvalDouble s) -> Just s
       Nothing -> Nothing
@@ -513,7 +512,7 @@ getArgFloat :: (Show a, Ord a) =>
                Args a        -- ^Parsed arguments.
             -> a             -- ^Index of argument to be retrieved.
             -> Maybe Float   -- ^Argument value if present.
-getArgFloat (Args { args = am }) k =
+getArgFloat (Args { args = ArgRecord am }) k =
     case Map.lookup k am of
       Just (ArgvalFloat s) -> Just s
       Nothing -> Nothing
