@@ -49,7 +49,7 @@ module ParseArgs (
   getArgInteger, getArgInt,
   getArgDouble, getArgFloat,
   -- * Misc
-  baseName)
+  baseName, usageError)
 where
 
 import Data.List
@@ -57,7 +57,7 @@ import qualified Data.Map as Map
 import Control.Monad
 import Data.Maybe
 import System.Environment
-import Control.Monad.ST.Lazy
+import Control.Monad.ST
 import System.IO
 
 -- The main job of this module is to provide parseArgs.
@@ -166,6 +166,23 @@ arg_optional :: (Ord a) =>
              -> Bool    -- ^False if argument is required to be present.
 arg_optional (Arg { argData = Just (DataArg { dataArgOptional = b }) }) = b
 arg_optional _ = True
+
+-- |Return the value of a defaulted argument.
+arg_default_value :: (Ord a)
+                  => Arg a         -- ^Argument.
+                  -> Maybe Argval  -- ^Optional default value.
+arg_default_value arg@(Arg { argData = Just
+                             (DataArg { dataArgArgtype = da }) }) |
+                             arg_optional arg =
+    defval da
+    where
+      defval (ArgtypeString (Just v)) = Just (ArgvalString v)
+      defval (ArgtypeInteger (Just v)) = Just (ArgvalInteger v)
+      defval (ArgtypeInt (Just v)) = Just (ArgvalInt v)
+      defval (ArgtypeDouble (Just v)) = Just (ArgvalDouble v)
+      defval (ArgtypeFloat (Just v)) = Just (ArgvalFloat v)
+      defval _ = Nothing
+arg_default_value _ = Nothing
 
 -- |There's probably a better way to do this.
 perhaps b s = if b then s else ""
@@ -285,14 +302,20 @@ parseArgs acomplete argd pathname argv =
                                   (Map.empty, posn_args, [])
                                   argv
            let required_args = filter (not . arg_optional) argd
-           if and (map (check_present usage am) required_args) then
-                   return (Args { args = ArgRecord am,
-                                  argsProgName = prog_name,
-                                  argsUsage = usage,
-                                  argsRest = rest })
-               else
-                   error "internal error")
+           unless (and (map (check_present usage am) required_args))
+                  (error "internal error")
+           let am' = foldl supply_defaults am argd
+           return (Args { args = ArgRecord am',
+                          argsProgName = prog_name,
+                          argsUsage = usage,
+                          argsRest = rest }))
   where
+    supply_defaults am ad@(Arg { argIndex = k }) =
+        case Map.lookup k am of
+          Just _ -> am
+          Nothing -> case arg_default_value ad of
+                       Just v -> Map.insert k v am
+                       Nothing -> am
     check_present usage am ad@(Arg { argIndex = k }) =
         case Map.lookup k am of
           Just _ -> True
@@ -552,3 +575,5 @@ argDataDefaulted s c d = Just (DataArg { dataArgName = s,
                                          dataArgArgtype = c (Just d),
                                          dataArgOptional = True })
 
+usageError :: (Ord a) => Args a -> b
+usageError args = error (argsUsage args)
