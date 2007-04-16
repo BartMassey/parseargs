@@ -344,7 +344,7 @@ parseArgs acomplete argd pathname argv =
     --- Generate a usage message string
     make_usage_string prog_name =
       --- top (summary) line
-      (prog_name ++ ": usage: " ++ prog_name) ++
+      ("usage: " ++ prog_name) ++
       (perhaps (not (null flag_args))
                " [options]") ++
       (perhaps (not (null posn_args))
