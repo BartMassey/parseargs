@@ -1,7 +1,7 @@
-test: dist/build/libHSParseArgs-0.1.a test.hs
+test: dist/build/ParseArgs.o
 	ghc --make test
 
-dist/build/libHSParseArgs-0.1.a: ParseArgs.hs
+dist/build/ParseArgs.o: ParseArgs.hs
 	runhaskell Setup.hs build
 
 install:
