@@ -2,12 +2,12 @@ Name: ParseArgs
 Version: 0.1
 License: BSD3
 License-File: COPYING
-Author: Bart Massey
+Author: Bart Massey <bart@cs.pdx.edu>
 Copyright: Copyright (C) 2007 Bart Massey
-Maintainer: bart@cs.pdx.edu
+Maintainer: Bart Massey <bart@cs.pdx.edu>
 Homepage: http://wiki.cs.pdx.edu/bartforge/parseargs
 Category: System.Console
 Build-Depends: base
 Synopsis: Command-line argument parsing library for Haskell programs
 Exposed-Modules: ParseArgs
-Stability: alpha
+Stability: Alpha
