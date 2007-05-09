@@ -49,7 +49,8 @@ module ParseArgs (
   getArgInteger, getArgInt,
   getArgDouble, getArgFloat,
   -- * Misc
-  baseName, usageError)
+  baseName, usageError,
+  System.IO.IOMode(ReadMode, WriteMode, AppendMode))
 where
 
 import Data.List
