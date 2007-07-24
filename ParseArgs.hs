@@ -479,12 +479,14 @@ getArgFile :: (Show a, Ord a) =>
               Args a              -- ^Parsed arguments.
            -> a                   -- ^Index of argument to be retrieved.
            -> IOMode              -- ^IO mode the file should be opened in.
-           -> Maybe (IO Handle)   -- ^Handle of opened file, if the argument
+           -> IO (Maybe Handle)   -- ^Handle of opened file, if the argument
                                   -- was present.
 getArgFile args k m =
     case getArgString args k of
-      Just s -> Just (openFile s m)
-      Nothing -> Nothing
+      Just s -> do
+        h <- openFile s m
+        return (Just h)
+      Nothing -> return Nothing
 
 -- |Treat the 'String', if any, of the given argument as a
 -- file handle and try to open it as requested.  If not
@@ -496,9 +498,10 @@ getArgStdio :: (Show a, Ord a) =>
             -> IOMode      -- ^IO mode the file should be opened in.
                            -- Must not be 'ReadWriteMode'.
             -> IO Handle   -- ^Appropriate file handle.
-getArgStdio args k m =
-    case getArgFile args k m of
-      Just h -> h
+getArgStdio args k m = do
+    mh <- getArgFile args k m
+    case mh of
+      Just h -> return h
       Nothing -> case m of
                    ReadMode -> return stdin
                    WriteMode -> return stdout
@@ -576,6 +579,5 @@ argDataDefaulted s c d = Just (DataArg { dataArgName = s,
                                          dataArgArgtype = c (Just d),
                                          dataArgOptional = True })
 
--- |Generate a usage error with the given supplementary message string.
-usageError :: (Ord a) => Args a -> String -> b
-usageError args msg = error (argsUsage args ++ "\n" ++ msg)
+usageError :: (Ord a) => Args a -> b
+usageError args = error (argsUsage args)
