@@ -20,7 +20,7 @@
 -- in this module returns an
 -- 'Args' data structure suitable for querying using the
 -- provided functions 'gotArg', 'getArgString', etc.
-module ParseArgs (
+module System.Console.ParseArgs (
   -- * Describing allowed arguments
   -- |The argument parser requires a description of
   -- the arguments that will be parsed.  This is

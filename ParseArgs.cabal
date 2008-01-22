@@ -1,4 +1,5 @@
 Name: ParseArgs
+Description: Parse command-line arguments
 Version: 0.1
 License: BSD3
 License-File: COPYING
@@ -9,5 +10,5 @@ Homepage: http://wiki.cs.pdx.edu/bartforge/parseargs
 Category: System.Console
 Build-Depends: base
 Synopsis: Command-line argument parsing library for Haskell programs
-Exposed-Modules: ParseArgs
+Exposed-Modules: System.Console.ParseArgs
 Stability: Alpha
