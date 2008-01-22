@@ -579,5 +579,6 @@ argDataDefaulted s c d = Just (DataArg { dataArgName = s,
                                          dataArgArgtype = c (Just d),
                                          dataArgOptional = True })
 
-usageError :: (Ord a) => Args a -> b
-usageError args = error (argsUsage args)
+-- |Generate a usage error with the given supplementary message string.
+usageError :: (Ord a) => Args a -> String -> b
+usageError args msg = error (argsUsage args ++ "\n" ++ msg)
