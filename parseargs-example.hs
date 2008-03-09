@@ -1,7 +1,7 @@
 module Main
 where
 
-import ParseArgs
+import System.Console.ParseArgs
 import System.Environment
 import Control.Monad
 import Data.Maybe
