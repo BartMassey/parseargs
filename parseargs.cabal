@@ -11,6 +11,7 @@ Homepage: http://wiki.cs.pdx.edu/bartforge/parseargs
 Category: System.Console
 Synopsis: Command-line argument parsing library for Haskell programs
 Stability: Alpha
+Extra-Source-Files: README
 
 Library
   Build-Depends:   base
