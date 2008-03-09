@@ -1,4 +1,5 @@
 Name: parseargs
+Build-Type: Simple
 Description: Parse command-line arguments
 Version: 0.1
 Cabal-Version: >= 1.2
