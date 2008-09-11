@@ -26,9 +26,11 @@ module System.Console.ParseArgs (
   -- the arguments that will be parsed.  This is
   -- supplied as a list of 'Arg' records, built up
   -- using the functions described here.
-  Argtype(..), DataArg, Arg(..),
-  ArgsComplete(..),
+  Arg(..),
+  DataArg,
   argDataRequired, argDataOptional, argDataDefaulted,
+  Argtype(..), 
+  ArgsComplete(..),
   -- * Argument processing
   -- |The argument descriptions are used to parse
   -- the command line arguments, and the results
@@ -68,15 +70,25 @@ import System.IO
 -- Provided datatypes.
 --
 
--- |The types of arguments carrying data;
--- the constructor arguments are for default values.
+-- |The types of an argument carrying data.  The constructor
+-- argument is used to carry a default value.
+--
+-- The constructor argument should really be hidden.
+-- Values of this type are normally constructed within
+-- the pseudo-constructors pseudo-constructors
+-- `argDataRequired`, `argDataOptional`, and
+-- `argDataDefaulted`, to which only the constructor
+-- function itself is passed.
 data Argtype = ArgtypeString (Maybe String)
              | ArgtypeInteger (Maybe Integer)
              | ArgtypeInt (Maybe Int)
              | ArgtypeDouble (Maybe Double)
              | ArgtypeFloat (Maybe Float)
 
--- |Information specific to an argument carrying a datum.
+-- |Information specific to an argument carrying a datum.  This
+-- is an opaque type, whose instances are constructed using the
+-- pseudo-constructors `argDataRequired`, `argDataOptional`,
+-- and `argDataDefaulted`.
 data DataArg = DataArg { dataArgName :: String       -- ^Print name of datum.
                        , dataArgArgtype :: Argtype   -- ^Type of datum.
                        , dataArgOptional :: Bool     -- ^Datum is not required.
