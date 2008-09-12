@@ -52,7 +52,7 @@ module System.Console.ParseArgs (
   getArgString, getArgFile, getArgStdio,
   getArgInteger, getArgInt,
   getArgDouble, getArgFloat,
-  FileOpener(..),
+  ArgFileOpener(..),
   -- * Misc
   baseName, usageError,
   System.IO.IOMode(ReadMode, WriteMode, AppendMode))
@@ -571,15 +571,15 @@ getArgFloat :: (Show a, Ord a) =>
 getArgFloat = getArg
 
 -- |`ArgType` instance for opening a file from its string name.
-newtype FileOpener = FileOpener {
-      fileOpener :: IOMode -> IO Handle  -- ^Function to open the file
+newtype ArgFileOpener = ArgFileOpener {
+      argFileOpener :: IOMode -> IO Handle  -- ^Function to open the file
     }
 
-instance ArgType FileOpener where
+instance ArgType ArgFileOpener where
     getArg args index =
         case getArg args index of
           Nothing -> Nothing
-          Just s -> Just (FileOpener { fileOpener = openFile s })
+          Just s -> Just (ArgFileOpener { argFileOpener = openFile s })
 
 -- |[Deprecated] Treat the `String` value, if any, of the given argument as
 -- a file handle and try to open it as requested.
@@ -591,7 +591,7 @@ getArgFile :: (Show a, Ord a) =>
                                   -- was present.
 getArgFile args k m =
   case getArg args k of
-    Just fo -> (do h <- fileOpener fo m; return (Just h))
+    Just fo -> (do h <- argFileOpener fo m; return (Just h))
     Nothing -> return Nothing
 
 
