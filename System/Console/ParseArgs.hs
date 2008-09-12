@@ -15,17 +15,17 @@
 -- PARTICULAR PURPOSE.
 
 -- |This module supplies an argument parser.
--- Given a description of type ['Arg'] of the legal
+-- Given a description of type [`Arg`] of the legal
 -- arguments to the program, a list of argument strings,
--- and a bit of extra information, the 'parseArgs' function
+-- and a bit of extra information, the `parseArgs` function
 -- in this module returns an
--- 'Args' data structure suitable for querying using the
--- provided functions 'gotArg', 'getArg', etc.
+-- `Args` data structure suitable for querying using the
+-- provided functions `gotArg`, `getArg`, etc.
 module System.Console.ParseArgs (
   -- * Describing allowed arguments
   -- |The argument parser requires a description of
   -- the arguments that will be parsed.  This is
-  -- supplied as a list of 'Arg' records, built up
+  -- supplied as a list of `Arg` records, built up
   -- using the functions described here.
   Arg(..),
   Argtype(..), 
@@ -74,23 +74,23 @@ import System.IO
 --
 
 -- |The description of an argument, suitable for
--- messages and for parsing.  The 'argData' field
+-- messages and for parsing.  The `argData` field
 -- is used both for flags with a data argument, and
 -- for positional data arguments.
 -- 
 -- There are two cases:
 --
 --     (1) The argument is a flag, in which case at least
---     one of 'argAbbr' and 'argName' is provided;
+--     one of `argAbbr` and `argName` is provided;
 --
 --     (2) The argument is positional, in which case neither
---     'argAbbr' nor 'argName' are provided, but 'argData' is.
+--     `argAbbr` nor `argName` are provided, but `argData` is.
 -- 
--- If none of 'argAbbr', 'argName', or 'argData' are
+-- If none of `argAbbr`, `argName`, or `argData` are
 -- provided, this is an error.  See also the
--- 'argDataRequired', 'argDataOptional', and
--- 'argDataDefaulted' functions below, which are used to
--- generate 'argData'.
+-- `argDataRequired`, `argDataOptional`, and
+-- `argDataDefaulted` functions below, which are used to
+-- generate `argData`.
 data (Ord a) => Arg a =
     Arg { argIndex :: a              -- ^Connects the input description
                                      -- to the output argument.
@@ -126,28 +126,28 @@ data DataArg = DataArg { dataArgName :: String       -- ^Print name of datum.
                        , dataArgOptional :: Bool     -- ^Datum is not required.
                        }
 
--- |Generate the 'argData' for the given non-optional argument.
+-- |Generate the `argData` for the given non-optional argument.
 argDataRequired :: String                 -- ^Datum print name.
                 -> (Maybe a -> Argtype)   -- ^Type constructor for datum.
-                -> Maybe DataArg          -- ^Result is 'argData'-ready.
+                -> Maybe DataArg          -- ^Result is `argData`-ready.
 argDataRequired s c = Just (DataArg { dataArgName = s,
                                       dataArgArgtype = c Nothing,
                                       dataArgOptional = False })
 
--- |Generate the 'argData' for the given optional argument with no default.
+-- |Generate the `argData` for the given optional argument with no default.
 argDataOptional :: String                 -- ^Datum print name.
                 -> (Maybe a -> Argtype)   -- ^Type constructor for datum.
-                -> Maybe DataArg          -- ^Result is 'argData'-ready.
+                -> Maybe DataArg          -- ^Result is `argData`-ready.
 argDataOptional s c = Just (DataArg { dataArgName = s,
                                       dataArgArgtype = c Nothing,
                                       dataArgOptional = True })
 
--- |Generate the 'argData' for the given optional argument with the
+-- |Generate the `argData` for the given optional argument with the
 -- given default.
 argDataDefaulted :: String                 -- ^Datum print name.
                  -> (Maybe a -> Argtype)   -- ^Type constructor for datum.
                  -> a                      -- ^Datum default value.
-                 -> Maybe DataArg          -- ^Result is 'argData'-ready.
+                 -> Maybe DataArg          -- ^Result is `argData`-ready.
 argDataDefaulted s c d = Just (DataArg { dataArgName = s,
                                          dataArgArgtype = c (Just d),
                                          dataArgOptional = True })
@@ -166,8 +166,8 @@ data Argval = ArgvalFlag   -- ^For simple present vs not-present flags.
 -- |The type of the mapping from argument index to value.
 newtype ArgRecord a = ArgRecord (Map.Map a Argval)
 
--- |The data structure 'parseArgs' produces.  The key
--- element is the 'ArgRecord' 'args'.
+-- |The data structure `parseArgs` produces.  The key
+-- element is the `ArgRecord` `args`.
 data (Ord a) => Args a =
     Args { args :: ArgRecord a      -- ^The argument map.
          , argsProgName :: String   -- ^Basename of 0th argument.
@@ -295,7 +295,7 @@ data ArgsComplete = ArgsComplete       -- ^Any extraneous arguments
 -- |The iteration function is given a state and a list, and
 -- expected to produce a new state and list.  The function
 -- is again invoked with the resulting state and list.
--- When the function returns the empty list, 'exhaust' returns
+-- When the function returns the empty list, `exhaust` returns
 -- the final state produced.
 exhaust :: (s -> [e] -> ([e], s))   -- ^Function to iterate.
         -> s                        -- ^Initial state.
@@ -313,7 +313,7 @@ parse_error :: String    -- ^Usage message.
 parse_error usage msg =
   error (usage ++ "\n" ++ msg)
 
--- |Given a description of the arguments, 'parseArgs' produces
+-- |Given a description of the arguments, `parseArgs` produces
 -- a map from the arguments to their \"values\" and some other
 -- useful byproducts.
 parseArgs :: (Show a, Ord a) =>
@@ -472,7 +472,7 @@ parseArgs acomplete argd pathname argv =
 
 -- |Most of the time, you just want the environment's
 -- arguments and are willing to live in the IO monad.
--- This version of 'parseArgs' digs the pathname and arguments
+-- This version of `parseArgs` digs the pathname and arguments
 -- out of the system directly.
 parseArgsIO :: (Show a, Ord a) =>
                ArgsComplete  -- ^Degree of completeness of parse.
@@ -530,7 +530,7 @@ getArgString = getArg
 instance ArgType Integer where
   getArg = getArgPrimitive (\(ArgvalInteger i) -> i)
 
--- |[Deprecated] Return the `Integer`, if any, of the given argument.
+-- |[Deprecated] Return the `Integer` value, if any, of the given argument.
 getArgInteger :: (Show a, Ord a) =>
                  Args a          -- ^Parsed arguments.
               -> a               -- ^Index of argument to be retrieved.
@@ -578,7 +578,7 @@ instance ArgType FileOpener where
           Nothing -> Nothing
           Just s -> Just (FileOpener { runFileOpener = openFile s })
 
--- |[Deprecated] Treat the 'String', if any, of the given argument as
+-- |[Deprecated] Treat the `String` value, if any, of the given argument as
 -- a file handle and try to open it as requested.
 getArgFile :: (Show a, Ord a) =>
               Args a              -- ^Parsed arguments.
@@ -592,15 +592,15 @@ getArgFile args k m =
     Nothing -> return Nothing
 
 
--- |Treat the 'String', if any, of the given argument as a
+-- |Treat the `String` value, if any, of the given argument as a
 -- file handle and try to open it as requested.  If not
 -- present, substitute the appropriate one of stdin or
--- stdout as indicated by 'IOMode'.
+-- stdout as indicated by `IOMode`.
 getArgStdio :: (Show a, Ord a) =>
                Args a      -- ^Parsed arguments.
             -> a           -- ^Index of argument to be retrieved.
             -> IOMode      -- ^IO mode the file should be opened in.
-                           -- Must not be 'ReadWriteMode'.
+                           -- Must not be `ReadWriteMode`.
             -> IO Handle   -- ^Appropriate file handle.
 getArgStdio args k m =
     case getArg args k of
