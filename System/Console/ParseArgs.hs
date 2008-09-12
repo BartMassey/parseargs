@@ -315,7 +315,10 @@ parse_error usage msg =
 
 -- |Given a description of the arguments, `parseArgs` produces
 -- a map from the arguments to their \"values\" and some other
--- useful byproducts.
+-- useful byproducts.  `parseArgs` requires that the argument
+-- descriptions occur in the order 1) flag arguments, 2) required
+-- positional arguments, 3) optional positional arguments; otherwise
+-- a runtime error will be thrown.
 parseArgs :: (Show a, Ord a) =>
              ArgsComplete   -- ^Degree of completeness of parse.
           -> [ Arg a ]      -- ^Argument descriptions.
