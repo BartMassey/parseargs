@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleInstances #-}
 -- Full-featured argument parsing library for Haskell programs
 -- Bart Massey <bart@cs.pdx.edu>
 
@@ -19,7 +20,7 @@
 -- and a bit of extra information, the 'parseArgs' function
 -- in this module returns an
 -- 'Args' data structure suitable for querying using the
--- provided functions 'gotArg', 'getArgString', etc.
+-- provided functions 'gotArg', 'getArg', etc.
 module System.Console.ParseArgs (
   -- * Describing allowed arguments
   -- |The argument parser requires a description of
@@ -27,10 +28,11 @@ module System.Console.ParseArgs (
   -- supplied as a list of 'Arg' records, built up
   -- using the functions described here.
   Arg(..),
-  DataArg,
-  argDataRequired, argDataOptional, argDataDefaulted,
   Argtype(..), 
   ArgsComplete(..),
+  -- ** DataArg and its seudo-constructors
+  DataArg,
+  argDataRequired, argDataOptional, argDataDefaulted,
   -- * Argument processing
   -- |The argument descriptions are used to parse
   -- the command line arguments, and the results
@@ -70,30 +72,6 @@ import System.IO
 -- Provided datatypes.
 --
 
--- |The types of an argument carrying data.  The constructor
--- argument is used to carry a default value.
---
--- The constructor argument should really be hidden.
--- Values of this type are normally constructed within
--- the pseudo-constructors pseudo-constructors
--- `argDataRequired`, `argDataOptional`, and
--- `argDataDefaulted`, to which only the constructor
--- function itself is passed.
-data Argtype = ArgtypeString (Maybe String)
-             | ArgtypeInteger (Maybe Integer)
-             | ArgtypeInt (Maybe Int)
-             | ArgtypeDouble (Maybe Double)
-             | ArgtypeFloat (Maybe Float)
-
--- |Information specific to an argument carrying a datum.  This
--- is an opaque type, whose instances are constructed using the
--- pseudo-constructors `argDataRequired`, `argDataOptional`,
--- and `argDataDefaulted`.
-data DataArg = DataArg { dataArgName :: String       -- ^Print name of datum.
-                       , dataArgArgtype :: Argtype   -- ^Type of datum.
-                       , dataArgOptional :: Bool     -- ^Datum is not required.
-                       }
-
 -- |The description of an argument, suitable for
 -- messages and for parsing.  The 'argData' field
 -- is used both for flags with a data argument, and
@@ -121,6 +99,57 @@ data (Ord a) => Arg a =
         , argDesc :: String          -- ^Documentation for the argument.
         } 
 
+
+-- |The types of an argument carrying data.  The constructor
+-- argument is used to carry a default value.
+--
+-- The constructor argument should really be hidden.
+-- Values of this type are normally constructed within
+-- the pseudo-constructors pseudo-constructors
+-- `argDataRequired`, `argDataOptional`, and
+-- `argDataDefaulted`, to which only the constructor
+-- function itself is passed.
+data Argtype = ArgtypeString (Maybe String)
+             | ArgtypeInteger (Maybe Integer)
+             | ArgtypeInt (Maybe Int)
+             | ArgtypeDouble (Maybe Double)
+             | ArgtypeFloat (Maybe Float)
+
+
+-- |Information specific to an argument carrying a datum.  This
+-- is an opaque type, whose instances are constructed using the
+-- pseudo-constructors `argDataRequired`, `argDataOptional`,
+-- and `argDataDefaulted`.
+data DataArg = DataArg { dataArgName :: String       -- ^Print name of datum.
+                       , dataArgArgtype :: Argtype   -- ^Type of datum.
+                       , dataArgOptional :: Bool     -- ^Datum is not required.
+                       }
+
+-- |Generate the 'argData' for the given non-optional argument.
+argDataRequired :: String                 -- ^Datum print name.
+                -> (Maybe a -> Argtype)   -- ^Type constructor for datum.
+                -> Maybe DataArg          -- ^Result is 'argData'-ready.
+argDataRequired s c = Just (DataArg { dataArgName = s,
+                                      dataArgArgtype = c Nothing,
+                                      dataArgOptional = False })
+
+-- |Generate the 'argData' for the given optional argument with no default.
+argDataOptional :: String                 -- ^Datum print name.
+                -> (Maybe a -> Argtype)   -- ^Type constructor for datum.
+                -> Maybe DataArg          -- ^Result is 'argData'-ready.
+argDataOptional s c = Just (DataArg { dataArgName = s,
+                                      dataArgArgtype = c Nothing,
+                                      dataArgOptional = True })
+
+-- |Generate the 'argData' for the given optional argument with the
+-- given default.
+argDataDefaulted :: String                 -- ^Datum print name.
+                 -> (Maybe a -> Argtype)   -- ^Type constructor for datum.
+                 -> a                      -- ^Datum default value.
+                 -> Maybe DataArg          -- ^Result is 'argData'-ready.
+argDataDefaulted s c d = Just (DataArg { dataArgName = s,
+                                         dataArgArgtype = c (Just d),
+                                         dataArgOptional = True })
 --
 -- Returned datatypes.
 --
@@ -148,16 +177,6 @@ data (Ord a) => Args a =
 --
 -- Implementation.
 --
-
--- |Return the filename part of a pathname.
--- Unnecessarily efficient implementation does a single
--- tail-call traversal with no construction.
-baseName :: String   -- ^Pathname.
-         -> String   -- ^Rightmost component of pathname.
-baseName s =
-    let s' = dropWhile (/= '/') s in
-    if null s' then s else baseName (tail s')
-
 
 -- |True if the described argument is positional.
 arg_posn :: (Ord a) =>
@@ -474,18 +493,88 @@ gotArg (Args { args = ArgRecord am }) k =
       Just _ -> True
       Nothing -> False
 
--- |Return the String, if any, of the given argument.
+-- |Type of values that can be parsed by the argument parser.
+class ArgType b where
+    -- |Fetch an argument's value if it is present.
+    getArg :: (Show a, Ord a)
+           => Args a    -- ^Parsed arguments.
+           -> a         -- ^Index of argument to be retrieved.
+           -> Maybe b   -- ^Argument value if present.
+    -- |Fetch the value of a required argument.
+    getRequiredArg :: (Show a, Ord a)
+           => Args a    -- ^Parsed arguments.
+           -> a         -- ^Index of argument to be retrieved.
+           -> b   -- ^Argument value.
+    getRequiredArg args index =
+        case getArg args index of
+          Just v -> v
+          Nothing -> error ("internal error: required argument "
+                          ++ show index ++ "not supplied")
+
+getArgPrimitive decons (Args { args = ArgRecord am }) k =
+    case Map.lookup k am of
+      Just v -> Just (decons v)
+      Nothing -> Nothing
+
+instance ArgType ([] Char) where
+  getArg = getArgPrimitive (\(ArgvalString s) -> s)
+
+-- |[Deprecated]  Return the String, if any, of the given argument.
 getArgString :: (Show a, Ord a) =>
                 Args a         -- ^Parsed arguments.
              -> a              -- ^Index of argument to be retrieved.
              -> Maybe String   -- ^Argument value if present.
-getArgString (Args { args = ArgRecord am }) k =
-    case Map.lookup k am of
-      Just (ArgvalString s) -> Just s
-      Nothing -> Nothing
-      _ -> error ("internal error: getArgString " ++ (show k))
+getArgString = getArg
 
--- |Treat the 'String', if any, of the given argument as
+instance ArgType Integer where
+  getArg = getArgPrimitive (\(ArgvalInteger i) -> i)
+
+-- |[Deprecated] Return the Integer, if any, of the given argument.
+getArgInteger :: (Show a, Ord a) =>
+                 Args a          -- ^Parsed arguments.
+              -> a               -- ^Index of argument to be retrieved.
+              -> Maybe Integer   -- ^Argument value if present.
+getArgInteger = getArg
+
+instance ArgType Int where
+  getArg = getArgPrimitive (\(ArgvalInt i) -> i)
+
+-- |[Deprecated] Return the Int, if any, of the given argument.
+getArgInt :: (Show a, Ord a) =>
+             Args a      -- ^Parsed arguments.
+          -> a           -- ^Index of argument to be retrieved.
+          -> Maybe Int   -- ^Argument value if present.
+getArgInt = getArg
+
+instance ArgType Double where
+  getArg = getArgPrimitive (\(ArgvalDouble i) -> i)
+
+-- |[Deprecated] Return the Double, if any, of the given argument.
+getArgDouble :: (Show a, Ord a) =>
+                Args a         -- ^Parsed arguments.
+             -> a              -- ^Index of argument to be retrieved.
+             -> Maybe Double   -- ^Argument value if present.
+getArgDouble = getArg
+
+instance ArgType Float where
+  getArg = getArgPrimitive (\(ArgvalFloat i) -> i)
+
+-- |[Deprecated] Return the Float, if any, of the given argument.
+getArgFloat :: (Show a, Ord a) =>
+               Args a        -- ^Parsed arguments.
+            -> a             -- ^Index of argument to be retrieved.
+            -> Maybe Float   -- ^Argument value if present.
+getArgFloat = getArg
+
+newtype FileOpener = FileOpener (IOMode -> IO Handle)
+
+instance ArgType FileOpener where
+    getArg args index =
+        case getArg args index of
+          Nothing -> Nothing
+          Just s -> Just (FileOpener (openFile s))
+
+-- |[Deprecated] Treat the 'String', if any, of the given argument as
 -- a file handle and try to open it as requested.
 getArgFile :: (Show a, Ord a) =>
               Args a              -- ^Parsed arguments.
@@ -494,11 +583,10 @@ getArgFile :: (Show a, Ord a) =>
            -> IO (Maybe Handle)   -- ^Handle of opened file, if the argument
                                   -- was present.
 getArgFile args k m =
-    case getArgString args k of
-      Just s -> do
-        h <- openFile s m
-        return (Just h)
-      Nothing -> return Nothing
+  case getArg args k of
+    Just (FileOpener f) -> (do h <- f m; return (Just h))
+    Nothing -> return Nothing
+
 
 -- |Treat the 'String', if any, of the given argument as a
 -- file handle and try to open it as requested.  If not
@@ -510,86 +598,31 @@ getArgStdio :: (Show a, Ord a) =>
             -> IOMode      -- ^IO mode the file should be opened in.
                            -- Must not be 'ReadWriteMode'.
             -> IO Handle   -- ^Appropriate file handle.
-getArgStdio args k m = do
-    mh <- getArgFile args k m
-    case mh of
-      Just h -> return h
-      Nothing -> case m of
-                   ReadMode -> return stdin
-                   WriteMode -> return stdout
-                   AppendMode -> return stdout
-                   ReadWriteMode -> error ("internal error: getArgStdio " ++
-                                           "called with ReadWriteMode")
+getArgStdio args k m =
+    case getArg args k of
+      Just s -> openFile s m
+      Nothing ->
+          case m of
+            ReadMode -> return stdin
+            WriteMode -> return stdout
+            AppendMode -> return stdout
+            ReadWriteMode ->
+                     error ("internal error: tried to open stdio "
+                            ++ "in ReadWriteMode")
 
--- |Return the Integer, if any, of the given argument.
-getArgInteger :: (Show a, Ord a) =>
-                 Args a          -- ^Parsed arguments.
-              -> a               -- ^Index of argument to be retrieved.
-              -> Maybe Integer   -- ^Argument value if present.
-getArgInteger (Args { args = ArgRecord am }) k =
-    case Map.lookup k am of
-      Just (ArgvalInteger s) -> Just s
-      Nothing -> Nothing
-      _ -> error ("internal error: getArgInteger " ++ (show k))
+---
+--- Misc
+---
 
--- |Return the Int, if any, of the given argument.
-getArgInt :: (Show a, Ord a) =>
-             Args a      -- ^Parsed arguments.
-          -> a           -- ^Index of argument to be retrieved.
-          -> Maybe Int   -- ^Argument value if present.
-getArgInt (Args { args = ArgRecord am }) k =
-    case Map.lookup k am of
-      Just (ArgvalInt s) -> Just s
-      Nothing -> Nothing
-      _ -> error ("internal error: getArgInt " ++ (show k))
+-- |Return the filename part of a pathname.
+-- Unnecessarily efficient implementation does a single
+-- tail-call traversal with no construction.
+baseName :: String   -- ^Pathname.
+         -> String   -- ^Rightmost component of pathname.
+baseName s =
+    let s' = dropWhile (/= '/') s in
+    if null s' then s else baseName (tail s')
 
--- |Return the Double, if any, of the given argument.
-getArgDouble :: (Show a, Ord a) =>
-                Args a         -- ^Parsed arguments.
-             -> a              -- ^Index of argument to be retrieved.
-             -> Maybe Double   -- ^Argument value if present.
-getArgDouble (Args { args = ArgRecord am }) k =
-    case Map.lookup k am of
-      Just (ArgvalDouble s) -> Just s
-      Nothing -> Nothing
-      _ -> error ("internal error: getArgDouble " ++ (show k))
-
--- |Return the Float, if any, of the given argument.
-getArgFloat :: (Show a, Ord a) =>
-               Args a        -- ^Parsed arguments.
-            -> a             -- ^Index of argument to be retrieved.
-            -> Maybe Float   -- ^Argument value if present.
-getArgFloat (Args { args = ArgRecord am }) k =
-    case Map.lookup k am of
-      Just (ArgvalFloat s) -> Just s
-      Nothing -> Nothing
-      _ -> error ("internal error: getArgFloat " ++ (show k))
-
--- |Generate the 'argData' for the given non-optional argument.
-argDataRequired :: String                 -- ^Datum print name.
-                -> (Maybe a -> Argtype)   -- ^Type constructor for datum.
-                -> Maybe DataArg          -- ^Result is 'argData'-ready.
-argDataRequired s c = Just (DataArg { dataArgName = s,
-                                      dataArgArgtype = c Nothing,
-                                      dataArgOptional = False })
-
--- |Generate the 'argData' for the given optional argument with no default.
-argDataOptional :: String                 -- ^Datum print name.
-                -> (Maybe a -> Argtype)   -- ^Type constructor for datum.
-                -> Maybe DataArg          -- ^Result is 'argData'-ready.
-argDataOptional s c = Just (DataArg { dataArgName = s,
-                                      dataArgArgtype = c Nothing,
-                                      dataArgOptional = True })
-
--- |Generate the 'argData' for the given optional argument with the
--- given default.
-argDataDefaulted :: String                 -- ^Datum print name.
-                 -> (Maybe a -> Argtype)   -- ^Type constructor for datum.
-                 -> a                      -- ^Datum default value.
-                 -> Maybe DataArg          -- ^Result is 'argData'-ready.
-argDataDefaulted s c d = Just (DataArg { dataArgName = s,
-                                         dataArgArgtype = c (Just d),
-                                         dataArgOptional = True })
 
 -- |Generate a usage error with the given supplementary message string.
 usageError :: (Ord a) => Args a -> String -> b
