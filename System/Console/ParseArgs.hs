@@ -30,7 +30,7 @@ module System.Console.ParseArgs (
   Arg(..),
   Argtype(..), 
   ArgsComplete(..),
-  -- ** DataArg and its seudo-constructors
+  -- ** DataArg and its pseudo-constructors
   DataArg,
   argDataRequired, argDataOptional, argDataDefaulted,
   -- * Argument processing
