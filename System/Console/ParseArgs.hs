@@ -48,7 +48,7 @@ module System.Console.ParseArgs (
   -- ** Using parse results
   -- |Query functions permit checking for the existence
   -- and values of command-line arguments.
-  gotArg,
+  gotArg, ArgType(..),
   getArgString, getArgFile, getArgStdio,
   getArgInteger, getArgInt,
   getArgDouble, getArgFloat,
