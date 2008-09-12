@@ -591,7 +591,7 @@ getArgFile :: (Show a, Ord a) =>
                                   -- was present.
 getArgFile args k m =
   case getArg args k of
-    Just fo -> (do h <- (fileOpener fo) m; return (Just h))
+    Just fo -> (do h <- fileOpener fo m; return (Just h))
     Nothing -> return Nothing
 
 
