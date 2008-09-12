@@ -572,14 +572,14 @@ getArgFloat = getArg
 
 -- |`ArgType` instance for opening a file from its string name.
 newtype FileOpener = FileOpener {
-      runFileOpener :: IOMode -> IO Handle  -- ^Function to open the file
+      fileOpener :: IOMode -> IO Handle  -- ^Function to open the file
     }
 
 instance ArgType FileOpener where
     getArg args index =
         case getArg args index of
           Nothing -> Nothing
-          Just s -> Just (FileOpener { runFileOpener = openFile s })
+          Just s -> Just (FileOpener { fileOpener = openFile s })
 
 -- |[Deprecated] Treat the `String` value, if any, of the given argument as
 -- a file handle and try to open it as requested.
@@ -591,7 +591,7 @@ getArgFile :: (Show a, Ord a) =>
                                   -- was present.
 getArgFile args k m =
   case getArg args k of
-    Just fo -> (do h <- (runFileOpener fo) m; return (Just h))
+    Just fo -> (do h <- (fileOpener fo) m; return (Just h))
     Nothing -> return Nothing
 
 
