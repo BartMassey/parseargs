@@ -52,6 +52,7 @@ module System.Console.ParseArgs (
   getArgString, getArgFile, getArgStdio,
   getArgInteger, getArgInt,
   getArgDouble, getArgFloat,
+  FileOpener(..),
   -- * Misc
   baseName, usageError,
   System.IO.IOMode(ReadMode, WriteMode, AppendMode))
@@ -519,7 +520,7 @@ getArgPrimitive decons (Args { args = ArgRecord am }) k =
 instance ArgType ([] Char) where
   getArg = getArgPrimitive (\(ArgvalString s) -> s)
 
--- |[Deprecated]  Return the String, if any, of the given argument.
+-- |[Deprecated]  Return the `String` value, if any, of the given argument.
 getArgString :: (Show a, Ord a) =>
                 Args a         -- ^Parsed arguments.
              -> a              -- ^Index of argument to be retrieved.
@@ -529,7 +530,7 @@ getArgString = getArg
 instance ArgType Integer where
   getArg = getArgPrimitive (\(ArgvalInteger i) -> i)
 
--- |[Deprecated] Return the Integer, if any, of the given argument.
+-- |[Deprecated] Return the `Integer`, if any, of the given argument.
 getArgInteger :: (Show a, Ord a) =>
                  Args a          -- ^Parsed arguments.
               -> a               -- ^Index of argument to be retrieved.
@@ -539,7 +540,7 @@ getArgInteger = getArg
 instance ArgType Int where
   getArg = getArgPrimitive (\(ArgvalInt i) -> i)
 
--- |[Deprecated] Return the Int, if any, of the given argument.
+-- |[Deprecated] Return the `Int` value, if any, of the given argument.
 getArgInt :: (Show a, Ord a) =>
              Args a      -- ^Parsed arguments.
           -> a           -- ^Index of argument to be retrieved.
@@ -549,7 +550,7 @@ getArgInt = getArg
 instance ArgType Double where
   getArg = getArgPrimitive (\(ArgvalDouble i) -> i)
 
--- |[Deprecated] Return the Double, if any, of the given argument.
+-- |[Deprecated] Return the `Double` value, if any, of the given argument.
 getArgDouble :: (Show a, Ord a) =>
                 Args a         -- ^Parsed arguments.
              -> a              -- ^Index of argument to be retrieved.
@@ -559,20 +560,23 @@ getArgDouble = getArg
 instance ArgType Float where
   getArg = getArgPrimitive (\(ArgvalFloat i) -> i)
 
--- |[Deprecated] Return the Float, if any, of the given argument.
+-- |[Deprecated] Return the `Float` value, if any, of the given argument.
 getArgFloat :: (Show a, Ord a) =>
                Args a        -- ^Parsed arguments.
             -> a             -- ^Index of argument to be retrieved.
             -> Maybe Float   -- ^Argument value if present.
 getArgFloat = getArg
 
-newtype FileOpener = FileOpener (IOMode -> IO Handle)
+-- |`ArgType` instance for opening a file from its string name.
+newtype FileOpener = FileOpener {
+      runFileOpener :: IOMode -> IO Handle  -- ^Function to open the file
+    }
 
 instance ArgType FileOpener where
     getArg args index =
         case getArg args index of
           Nothing -> Nothing
-          Just s -> Just (FileOpener (openFile s))
+          Just s -> Just (FileOpener { runFileOpener = openFile s })
 
 -- |[Deprecated] Treat the 'String', if any, of the given argument as
 -- a file handle and try to open it as requested.
@@ -584,7 +588,7 @@ getArgFile :: (Show a, Ord a) =>
                                   -- was present.
 getArgFile args k m =
   case getArg args k of
-    Just (FileOpener f) -> (do h <- f m; return (Just h))
+    Just fo -> (do h <- (runFileOpener fo) m; return (Just h))
     Nothing -> return Nothing
 
 
