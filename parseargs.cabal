@@ -1,12 +1,12 @@
 Name: parseargs
 Build-Type: Simple
 Description: Parse command-line arguments
-Version: 0.1.1
+Version: 0.1.2
 Cabal-Version: >= 1.2
 License: BSD3
 License-File: COPYING
 Author: Bart Massey <bart@cs.pdx.edu>
-Copyright: Copyright (C) 2007 Bart Massey
+Copyright: Copyright (C) 2008 Bart Massey
 Maintainer: Bart Massey <bart@cs.pdx.edu>
 Homepage: http://wiki.cs.pdx.edu/bartforge/parseargs
 Category: System.Console

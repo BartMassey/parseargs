@@ -46,13 +46,13 @@ main = do
   putStrLn "parse successful"
   when (gotArg args OptionFlag)
        (putStrLn "saw flag")
-  case (getArgString args OptionFlagString) of
+  case (getArg args OptionFlagString) of
     Just s -> putStrLn ("saw string " ++ s)
     Nothing -> return ()
-  case (getArgInt args OptionFlagInt) of
-    Just d -> putStrLn ("saw int " ++ (show d))
+  case (getArg args OptionFlagInt) of
+    Just d -> putStrLn ("saw int " ++ (show (d::Int)))
     Nothing -> return ()
   putStrLn ("saw fixed " ++ (fromJust (getArgString args OptionFixed)))
-  case (getArgString args OptionOptional) of
+  case (getArg args OptionOptional) of
     Just s -> putStrLn ("saw optional " ++ s)
     Nothing -> return ()
