@@ -463,12 +463,19 @@ parseArgs acomplete argd pathname argv =
                                      dataArgArgtype = atype }),
                          argIndex = index })
                (a : argl) =
-                 let v = case atype of
+                 let read_arg constructor kind =
+                         case reads a of
+                           [(v, "")] -> constructor v
+                           _ -> parse_error usage ("argument " ++
+                                                   a ++ " to " ++ name ++
+                                                   " is not " ++ kind)
+                     v = case atype of
                            ArgtypeString _ -> ArgvalString a
-                           ArgtypeInteger _ -> ArgvalInteger (read a)
-                           ArgtypeInt _ -> ArgvalInt (read a)
-                           ArgtypeDouble _ -> ArgvalDouble (read a)
-                           ArgtypeFloat _ -> ArgvalFloat (read a)
+                           ArgtypeInteger _ -> read_arg ArgvalInteger
+                                                        "an integer"
+                           ArgtypeInt _ -> read_arg ArgvalInt "an int"
+                           ArgtypeDouble _ -> read_arg ArgvalDouble "a double"
+                           ArgtypeFloat _ -> read_arg ArgvalFloat "a float"
                      am' = add_entry name am (index, v)
                  in (argl, (am', posn, rest))
 
