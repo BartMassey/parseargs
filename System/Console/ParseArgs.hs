@@ -54,16 +54,19 @@ module System.Console.ParseArgs (
   getArgDouble, getArgFloat,
   ArgFileOpener(..),
   -- * Misc
+  ParseArgsException(..),
   baseName, parseError, usageError,
   System.IO.IOMode(ReadMode, WriteMode, AppendMode))
 where
 
+import Control.Exception
+import Control.Monad
+import Control.Monad.ST
 import Data.List
 import qualified Data.Map as Map
-import Control.Monad
 import Data.Maybe
+import Data.Typeable
 import System.Environment
-import Control.Monad.ST
 import System.IO
 
 -- The main job of this module is to provide parseArgs.
@@ -174,6 +177,27 @@ data (Ord a) => Args a =
          , argsUsage :: String      -- ^Full usage string.
          , argsRest :: [ String ]   -- ^Remaining unprocessed arguments.
          }
+
+--
+-- Exception type.
+--
+
+-- |This exception is raised with an appropriate error message
+-- when argument parsing fails.
+data ParseArgsException = ParseArgsException
+                          String  -- ^Usage message.
+                          String  -- ^Parse error message.
+     deriving Eq
+
+instance Typeable ParseArgsException where
+    typeOf _ = mkTyConApp e [s, s] where
+        e = mkTyCon "ParseArgsException"
+        s = typeOf ""
+
+instance Exception ParseArgsException
+
+instance Show ParseArgsException where
+    show (ParseArgsException usage msg) = msg ++ "\n" ++ usage
 
 --
 -- Implementation.
@@ -311,7 +335,7 @@ parseError :: String    -- ^Usage message.
             -> String    -- ^Specific error message.
             -> a         -- ^Bogus polymorphic result.
 parseError usage msg =
-  error (msg ++ "\n" ++ usage)
+  throw (ParseArgsException usage msg)
 
 -- |Given a description of the arguments, `parseArgs` produces
 -- a map from the arguments to their \"values\" and some other

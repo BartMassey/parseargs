@@ -1,10 +1,14 @@
 module Main
 where
 
-import System.Console.ParseArgs
-import System.Environment
+import Prelude hiding (catch)
+
+import Control.Exception
 import Control.Monad
 import Data.Maybe
+import System.Environment
+
+import System.Console.ParseArgs
 
 data Options =
     OptionFlag |
