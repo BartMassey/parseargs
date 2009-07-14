@@ -54,7 +54,7 @@ module System.Console.ParseArgs (
   getArgDouble, getArgFloat,
   ArgFileOpener(..),
   -- * Misc
-  baseName, usageError,
+  baseName, parseError, usageError,
   System.IO.IOMode(ReadMode, WriteMode, AppendMode))
 where
 
@@ -306,12 +306,12 @@ exhaust f s l =
   let (l', s') = f s l
   in exhaust f s' l'
 
--- |Print an error message during parsing.
-parse_error :: String    -- ^Usage message.
+-- |Generate a usage error with the given supplementary message string.
+parseError :: String    -- ^Usage message.
             -> String    -- ^Specific error message.
             -> a         -- ^Bogus polymorphic result.
-parse_error usage msg =
-  error (usage ++ "\n" ++ msg)
+parseError usage msg =
+  error (msg ++ "\n" ++ usage)
 
 -- |Given a description of the arguments, `parseArgs` produces
 -- a map from the arguments to their \"values\" and some other
@@ -355,7 +355,7 @@ parseArgs acomplete argd pathname argv =
     check_present usage am ad@(Arg { argIndex = k }) =
         case Map.lookup k am of
           Just _ -> True
-          Nothing -> parse_error usage ("missing required argument " ++
+          Nothing -> parseError usage ("missing required argument " ++
                                         (arg_string ad))
     --- Check for various possible misuses.
     check_argd :: ST s ()
@@ -379,37 +379,41 @@ parseArgs acomplete argd pathname argv =
         arg_nullary _ = False
     --- Generate a usage message string
     make_usage_string prog_name =
-      --- top (summary) line
-      ("usage: " ++ prog_name) ++
-      (perhaps (not (null flag_args))
-               " [options]") ++
-      (perhaps (not (null posn_args))
-               (" " ++ (unwords (map arg_string posn_args)))) ++
-      (case acomplete of
-         ArgsComplete -> ""
-         _ -> " [--] ...") ++
-      "\n" ++
-      --- argument lines
-      (concatMap (arg_line n) argd)
+      summary_line ++ arg_lines
       where
         flag_args = filter arg_flag argd
         posn_args = filter arg_posn argd
         n = maximum (map (length . arg_string) argd)
-        arg_line n a =
-          let s = arg_string a in
-            "  " ++ s ++ 
-            (replicate (n - (length s)) ' ') ++
-            "  " ++ (argDesc a) ++ "\n"
+        --- top (summary) line
+        summary_line = 
+            "usage: " ++ prog_name ++
+            perhaps
+              (not (null flag_args))
+              " [options]" ++
+            perhaps
+              (not (null posn_args))
+              (" " ++ unwords (map arg_string posn_args)) ++
+            (case acomplete of
+               ArgsComplete -> ""
+               _ -> " [--] ...") ++
+            "\n"
+        --- argument lines
+        arg_lines = concatMap (arg_line n) argd where
+            arg_line n a =
+                let s = arg_string a in
+                "  " ++ s ++ 
+                replicate (n - (length s)) ' ' ++
+                "  " ++ argDesc a ++ "\n"
     --- simple recursive-descent parser
     parse _ _ _ av@(_, _, []) [] = ([], av)
     parse usage _ _ av [] =
         case acomplete of
-          ArgsComplete -> parse_error usage "unexpected extra arguments"
+          ArgsComplete -> parseError usage "unexpected extra arguments"
           _ -> ([], av)
     parse usage name_hash abbr_hash (am, posn, rest) av@(aa : aas) =
         case aa of
           "--" -> case acomplete of
-                    ArgsComplete -> parse_error usage
+                    ArgsComplete -> parseError usage
                                       ("unexpected -- " ++
                                       "(extra arguments not allowed)")
                     _ -> ([], (am, posn, (rest ++ aas)))
@@ -420,7 +424,7 @@ parseArgs acomplete argd pathname argv =
                     case acomplete of
                       ArgsInterspersed ->
                           (aas, (am, posn, rest ++ ["--" ++ name]))
-                      _ -> parse_error usage
+                      _ -> parseError usage
                            ("unknown argument --" ++ name)
           ('-' : abbr : abbrs) ->
               case Map.lookup abbr abbr_hash of
@@ -428,7 +432,7 @@ parseArgs acomplete argd pathname argv =
                   let p@(args', state') = peel ['-', abbr] ad aas
                   in case abbrs of
                     [] -> p
-                    ('-' : _) -> parse_error usage
+                    ('-' : _) -> parseError usage
                                  ("bad internal '-' in argument " ++ aa)
                     _ -> (['-' : abbrs] ++ args', state')
                 Nothing ->
@@ -436,7 +440,7 @@ parseArgs acomplete argd pathname argv =
                       ArgsInterspersed ->
                           (['-' : abbrs] ++ aas,
                            (am, posn, rest ++ [['-', abbr]]))
-                      _ -> parse_error usage
+                      _ -> parseError usage
                            ("unknown argument -" ++ [abbr])
           aa -> case posn of
                   (ad@(Arg { argData = Just adata }) : ps) ->
@@ -444,19 +448,19 @@ parseArgs acomplete argd pathname argv =
                                   peel_process (dataArgName adata) ad av
                           in (argl', (am', ps, rest'))
                   [] -> case acomplete of
-                          ArgsComplete -> parse_error usage
+                          ArgsComplete -> parseError usage
                                           ("unexpected argument " ++ aa)
                           _ -> (aas, (am, [], rest ++ [aa]))
         where
           add_entry s m (k, a) =
               case Map.member k m of
                 False -> Map.insert k a m
-                True -> parse_error usage ("duplicate argument " ++ s)
+                True -> parseError usage ("duplicate argument " ++ s)
           peel name ad@(Arg { argData = Nothing, argIndex = index }) argl =
               let am' = add_entry name am (index, ArgvalFlag)
               in (argl, (am', posn, rest))
           peel name (Arg { argData = Just (DataArg {}) }) [] =
-              parse_error usage (name ++ " is missing its argument")
+              parseError usage (name ++ " is missing its argument")
           peel name ad argl = peel_process name ad argl
           peel_process name
                ad@(Arg { argData = Just (DataArg {
@@ -466,7 +470,7 @@ parseArgs acomplete argd pathname argv =
                  let read_arg constructor kind =
                          case reads a of
                            [(v, "")] -> constructor v
-                           _ -> parse_error usage ("argument " ++
+                           _ -> parseError usage ("argument " ++
                                                    a ++ " to " ++ name ++
                                                    " is not " ++ kind)
                      v = case atype of
