@@ -183,10 +183,9 @@ data (Ord a) => Args a =
 --
 
 -- |This exception is raised with an appropriate error message
--- when argument parsing fails.
-data ParseArgsException = ParseArgsException
-                          String  -- ^Usage message.
-                          String  -- ^Parse error message.
+-- when argument parsing fails.  The first argument is the usage
+-- message, the second the actual error message from the parser.
+data ParseArgsException = ParseArgsException String String
      deriving Eq
 
 instance Typeable ParseArgsException where

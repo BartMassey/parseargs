@@ -15,10 +15,10 @@ Stability: Alpha
 Extra-Source-Files: README
 
 Library
-  Build-Depends:   base
+  Build-Depends:   base <= 5
   Exposed-Modules: System.Console.ParseArgs
 
 Executable parseargs-example
-  Build-Depends:   base, containers
+  Build-Depends:   base <= 5, containers <= 0.4
   Main-Is:         parseargs-example.hs
   Other-Modules:   System.Console.ParseArgs
