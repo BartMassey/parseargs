@@ -46,7 +46,7 @@ argd = [ Arg { argIndex = OptionFlag,
                argDesc = "Test optional string" }]
 
 main = do
-  args <- parseArgsIO ArgsComplete argd
+  args <- parseArgsIO (ArgsTrailing "junk") argd
   putStrLn "parse successful"
   when (gotArg args OptionFlag)
        (putStrLn "saw flag")
@@ -60,3 +60,4 @@ main = do
   case (getArg args OptionOptional) of
     Just s -> putStrLn ("saw optional " ++ s)
     Nothing -> return ()
+  putStrLn ("saw rest: " ++ show (argsRest args))
