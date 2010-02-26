@@ -2,7 +2,7 @@
 -- Full-featured argument parsing library for Haskell programs
 -- Bart Massey <bart@cs.pdx.edu>
 
--- Copyright (C) 2007 Bart Massey
+-- Copyright © 2007-2010 Bart Massey
 -- ALL RIGHTS RESERVED
 
 -- You can redistribute and/or modify this library under the
