@@ -305,15 +305,17 @@ make_keymap f_field args =
      map (\arg -> (f_field arg, arg))) args
 
 -- |How \"sloppy\" the parse is.
-data ArgsComplete = ArgsComplete       -- ^Any extraneous arguments
-                                       -- (unparseable from description)
-                                       -- will cause the parser to fail.
-                  | ArgsTrailing       -- ^Trailing extraneous arguments are
-                                       -- permitted, and will be skipped,
-                                       -- saved, and returned.
-                  | ArgsInterspersed   -- ^All extraneous arguments are
-                                       -- permitted, and will be skipped,
-                                       -- saved, and returned.
+data ArgsComplete = ArgsComplete         -- ^Any extraneous arguments
+                                         -- (unparseable from description)
+                                         -- will cause the parser to fail.
+                  | ArgsTrailing String  -- ^Trailing extraneous arguments are
+                                         -- permitted, and will be skipped,
+                                         -- saved, and returned.  The
+                                         -- constructor argument is the
+                                         -- name of the args.
+                  | ArgsInterspersed     -- ^All extraneous arguments are
+                                         -- permitted, and will be skipped,
+                                         -- saved, and returned.
 
 -- |The iteration function is given a state and a list, and
 -- expected to produce a new state and list.  The function
@@ -418,8 +420,8 @@ parseArgs acomplete argd pathname argv =
               (" " ++ unwords (map arg_string posn_args)) ++
             (case acomplete of
                ArgsComplete -> ""
-               _ -> " [--] ...") ++
-            "\n"
+               ArgsTrailing s -> " [--] [" ++ s ++ " ...]"
+               ArgsInterspersed -> " ... [--] ...") ++ "\n"
         --- argument lines
         arg_lines = concatMap (arg_line n) argd where
             arg_line n a =
