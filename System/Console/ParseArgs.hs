@@ -552,12 +552,13 @@ class ArgType b where
                           ++ show index ++ "not supplied")
 
 getArgPrimitive decons (Args { args = ArgRecord am }) k =
-    case Map.lookup k am of
-      Just v -> Just (decons v)
-      Nothing -> Nothing
+  Map.lookup k am >>= decons
+
+instance ArgType () where
+  getArg = getArgPrimitive (\ArgvalFlag -> return ())
 
 instance ArgType ([] Char) where
-  getArg = getArgPrimitive (\(ArgvalString s) -> s)
+  getArg = getArgPrimitive (\(ArgvalString s) -> return s)
 
 -- |[Deprecated]  Return the `String` value, if any, of the given argument.
 getArgString :: (Show a, Ord a) =>
@@ -567,7 +568,7 @@ getArgString :: (Show a, Ord a) =>
 getArgString = getArg
 
 instance ArgType Integer where
-  getArg = getArgPrimitive (\(ArgvalInteger i) -> i)
+  getArg = getArgPrimitive (\(ArgvalInteger i) -> return i)
 
 -- |[Deprecated] Return the `Integer` value, if any, of the given argument.
 getArgInteger :: (Show a, Ord a) =>
@@ -577,7 +578,7 @@ getArgInteger :: (Show a, Ord a) =>
 getArgInteger = getArg
 
 instance ArgType Int where
-  getArg = getArgPrimitive (\(ArgvalInt i) -> i)
+  getArg = getArgPrimitive (\(ArgvalInt i) -> return i)
 
 -- |[Deprecated] Return the `Int` value, if any, of the given argument.
 getArgInt :: (Show a, Ord a) =>
@@ -587,7 +588,7 @@ getArgInt :: (Show a, Ord a) =>
 getArgInt = getArg
 
 instance ArgType Double where
-  getArg = getArgPrimitive (\(ArgvalDouble i) -> i)
+  getArg = getArgPrimitive (\(ArgvalDouble i) -> return i)
 
 -- |[Deprecated] Return the `Double` value, if any, of the given argument.
 getArgDouble :: (Show a, Ord a) =>
@@ -597,7 +598,7 @@ getArgDouble :: (Show a, Ord a) =>
 getArgDouble = getArg
 
 instance ArgType Float where
-  getArg = getArgPrimitive (\(ArgvalFloat i) -> i)
+  getArg = getArgPrimitive (\(ArgvalFloat i) -> return i)
 
 -- |[Deprecated] Return the `Float` value, if any, of the given argument.
 getArgFloat :: (Show a, Ord a) =>
@@ -613,9 +614,8 @@ newtype ArgFileOpener = ArgFileOpener {
 
 instance ArgType ArgFileOpener where
     getArg args index =
-        case getArg args index of
-          Nothing -> Nothing
-          Just s -> Just (ArgFileOpener { argFileOpener = openFile s })
+        getArg args index >>= 
+          (\s -> return $ ArgFileOpener { argFileOpener = openFile s })
 
 -- |[Deprecated] Treat the `String` value, if any, of the given argument as
 -- a file handle and try to open it as requested.
