@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FlexibleInstances, DeriveDataTypeable #-}
 -- Full-featured argument parsing library for Haskell programs
 -- Bart Massey <bart@cs.pdx.edu>
 
@@ -186,12 +186,7 @@ data (Ord a) => Args a =
 -- when argument parsing fails.  The first argument is the usage
 -- message, the second the actual error message from the parser.
 data ParseArgsException = ParseArgsException String String
-     deriving Eq
-
-instance Typeable ParseArgsException where
-    typeOf _ = mkTyConApp e [s, s] where
-        e = mkTyCon "ParseArgsException"
-        s = typeOf ""
+     deriving (Eq, Typeable)
 
 instance Exception ParseArgsException
 
