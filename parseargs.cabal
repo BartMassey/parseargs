@@ -1,8 +1,8 @@
 Name: parseargs
 Build-Type: Simple
 Description: Parse command-line arguments
-Version: 0.1.3.3
-Cabal-Version: >= 1.2
+Version: 0.1.3.4
+Cabal-Version: >= 1.6
 License: BSD3
 License-File: COPYING
 Author: Bart Massey <bart@cs.pdx.edu>
@@ -21,3 +21,12 @@ Executable parseargs-example
   Build-Depends:   base < 5
   Main-Is:         parseargs-example.hs
   Other-Modules:   System.Console.ParseArgs
+
+Source-repository head
+  Type:     git
+  Location: git://svcs.cs.pdx.edu/git/parseargs.git
+
+Source-repository this
+  Type:     git
+  Location: git://svcs.cs.pdx.edu/git/parseargs.git
+  Tag:      v0.1.3.4
