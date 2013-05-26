@@ -458,8 +458,8 @@ parseArgs acomplete argd pathname argv =
                 Nothing ->
                     case acomplete of
                       ArgsInterspersed ->
-                          (['-' : abbrs] ++ aas,
-                           (am, posn, rest ++ [['-', abbr]]))
+                          (aas,
+                           (am, posn, rest ++ ['-' : abbr : abbrs]))
                       _ -> parseError usage
                            ("unknown argument -" ++ [abbr])
           aa -> case posn of
