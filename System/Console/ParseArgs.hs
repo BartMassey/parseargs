@@ -348,8 +348,7 @@ parseArgs :: (Show a, Ord a) =>
 parseArgs acomplete argd pathname argv =
   runST (do
            check_argd
-           let flag_args = takeWhile arg_flag argd
-           let posn_args = dropWhile arg_flag argd
+           let (flag_args, posn_args) = span arg_flag argd
            let name_hash = make_keymap argName flag_args
            let abbr_hash = make_keymap argAbbr flag_args
            let prog_name = baseName pathname
