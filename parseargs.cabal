@@ -1,6 +1,7 @@
 Name: parseargs
 Build-Type: Simple
 Description: Parse command-line arguments
+-- Don't forget to bump the source-repository this below
 Version: 0.1.3.5
 Cabal-Version: >= 1.6
 License: BSD3
@@ -8,7 +9,7 @@ License-File: COPYING
 Author: Bart Massey <bart@cs.pdx.edu>
 Copyright: Copyright (C) 2008 Bart Massey
 Maintainer: Bart Massey <bart@cs.pdx.edu>
-Homepage: http://wiki.cs.pdx.edu/bartforge/parseargs
+Homepage: http://github.com/BartMassey/parseargs
 Category: System.Console
 Synopsis: Command-line argument parsing library for Haskell programs
 Extra-Source-Files: README
@@ -24,9 +25,9 @@ Executable parseargs-example
 
 Source-repository head
   Type:     git
-  Location: git://svcs.cs.pdx.edu/git/parseargs.git
+  Location: git://github.com/BartMassey/parseargs.git
 
 Source-repository this
   Type:     git
-  Location: git://svcs.cs.pdx.edu/git/parseargs.git
-  Tag:      v0.1.3.4
+  Location: git://github.com/BartMassey/parseargs.git
+  Tag:      v0.1.3.5
