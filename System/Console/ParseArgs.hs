@@ -218,6 +218,11 @@ arg_optional :: (Ord a) =>
 arg_optional (Arg { argData = Just (DataArg { dataArgOptional = b }) }) = b
 arg_optional _ = True
 
+arg_required :: (Ord a) =>
+                Arg a   -- ^Argument.
+             -> Bool    -- ^True if argument is required to be present.
+arg_required a = not (arg_optional a)
+
 -- |Return the value of a defaulted argument.
 arg_default_value :: (Ord a)
                   => Arg a         -- ^Argument.
@@ -336,8 +341,8 @@ parseError usage msg =
 -- |Given a description of the arguments, `parseArgs` produces
 -- a map from the arguments to their \"values\" and some other
 -- useful byproducts.  `parseArgs` requires that the argument
--- descriptions occur in the order 1) flag arguments, 2) required
--- positional arguments, 3) optional positional arguments; otherwise
+-- descriptions occur in the order 1) flag arguments, then 2)
+-- positional arguments; otherwise
 -- a runtime error will be thrown.
 parseArgs :: (Show a, Ord a) =>
              ArgsComplete   -- ^Degree of completeness of parse.
@@ -379,12 +384,10 @@ parseArgs acomplete argd pathname argv =
     --- Check for various possible misuses.
     check_argd :: ST s ()
     check_argd = do
-      --- Order must be flags, posn args, optional posn args
-      let residue = dropWhile arg_flag argd
-      let residue' = dropWhile arg_fixed_posn residue
-      let residue'' = dropWhile arg_opt_posn residue'
-      unless (null residue'')
-             (argdesc_error "argument description in wrong order")
+      --- Order must be flags, then posn args
+      let (flags, posns) = span arg_flag argd
+      unless (all arg_posn posns)
+             (argdesc_error "argument description mixes flags and positionals")
       --- No argument may be "nullary".
       when (or (map arg_nullary argd))
            (argdesc_error "bogus 'nothing' argument")
@@ -438,19 +441,23 @@ parseArgs acomplete argd pathname argv =
                     _ -> ([], (am, posn, (rest ++ aas)))
           s@('-' : '-' : name) ->
               case Map.lookup name name_hash of
-                Just ad -> peel s ad aas
+                Just ad -> 
+                  let (args', am') = peel s ad aas in
+                  (args', (am', posn, rest))
                 Nothing ->
-                    case acomplete of
-                      ArgsInterspersed ->
-                          (aas, (am, posn, rest ++ ["--" ++ name]))
-                      _ -> parseError usage
-                           ("unknown argument --" ++ name)
+                  case acomplete of
+                    ArgsInterspersed ->
+                      (aas, (am, posn, rest ++ ["--" ++ name]))
+                    _ -> 
+                      parseError usage
+                        ("unknown argument --" ++ name)
           ('-' : abbr : abbrs) ->
               case Map.lookup abbr abbr_hash of
                 Just ad ->
-                  let p@(args', state') = peel ['-', abbr] ad aas
+                  let (args', am') = peel ['-', abbr] ad aas
+                      state' = (am', posn, rest)
                   in case abbrs of
-                    [] -> p
+                    [] -> (args', state')
                     ('-' : _) -> parseError usage
                                  ("bad internal '-' in argument " ++ aa)
                     _ -> (['-' : abbrs] ++ args', state')
@@ -461,15 +468,19 @@ parseArgs acomplete argd pathname argv =
                            (am, posn, rest ++ ['-' : abbr : abbrs]))
                       _ -> parseError usage
                            ("unknown argument -" ++ [abbr])
-          aa -> case posn of
-                  (ad@(Arg { argData = Just adata }) : ps) ->
-                          let (argl', (am', _, rest')) =
-                                  peel_process (dataArgName adata) ad av
-                          in (argl', (am', ps, rest'))
-                  [] -> case acomplete of
-                          ArgsComplete -> parseError usage
-                                          ("unexpected argument " ++ aa)
-                          _ -> (aas, (am, [], rest ++ [aa]))
+          _ ->
+            case posn of
+              (p : ps) ->
+                let (opt_posn, req_posn) = partition arg_optional posn in
+                case length av - length req_posn of
+                  n_extra | n_extra > 0 || (n_extra == 0 && arg_required p) ->
+                    let (args', am') = peel (dataArgName $ fromJust $ 
+                                             argData p) p av in
+                    (args', (am', ps, rest))
+                  0 -> (av, (am, ps, rest))
+                  _ -> parseError usage 
+                         "missing required positional argument(s)"
+              [] -> ([], (am, [], rest ++ av))
         where
           add_entry s m (k, a) =
               case Map.member k m of
@@ -477,30 +488,29 @@ parseArgs acomplete argd pathname argv =
                 True -> parseError usage ("duplicate argument " ++ s)
           peel name ad@(Arg { argData = Nothing, argIndex = index }) argl =
               let am' = add_entry name am (index, ArgvalFlag)
-              in (argl, (am', posn, rest))
+              in (argl, am')
           peel name (Arg { argData = Just (DataArg {}) }) [] =
               parseError usage (name ++ " is missing its argument")
-          peel name ad argl = peel_process name ad argl
-          peel_process name
-               ad@(Arg { argData = Just (DataArg {
-                                     dataArgArgtype = atype }),
-                         argIndex = index })
-               (a : argl) =
-                 let read_arg constructor kind =
-                         case reads a of
-                           [(v, "")] -> constructor v
-                           _ -> parseError usage ("argument " ++
-                                                   a ++ " to " ++ name ++
-                                                   " is not " ++ kind)
-                     v = case atype of
-                           ArgtypeString _ -> ArgvalString a
-                           ArgtypeInteger _ -> read_arg ArgvalInteger
-                                                        "an integer"
-                           ArgtypeInt _ -> read_arg ArgvalInt "an int"
-                           ArgtypeDouble _ -> read_arg ArgvalDouble "a double"
-                           ArgtypeFloat _ -> read_arg ArgvalFloat "a float"
-                     am' = add_entry name am (index, v)
-                 in (argl, (am', posn, rest))
+          peel name ad@(Arg { argData = 
+                                 Just (DataArg { dataArgArgtype = atype }),
+                              argIndex = index })
+              (a : argl) =
+                let v = case atype of
+                          ArgtypeString _ -> ArgvalString a
+                          ArgtypeInteger _ -> read_arg ArgvalInteger
+                                                       "an integer"
+                          ArgtypeInt _ -> read_arg ArgvalInt "an int"
+                          ArgtypeDouble _ -> read_arg ArgvalDouble "a double"
+                          ArgtypeFloat _ -> read_arg ArgvalFloat "a float"
+                        where
+                          read_arg constructor kind =
+                            case reads a of
+                              [(v, "")] -> constructor v
+                              _ -> parseError usage ("argument " ++
+                                                     a ++ " to " ++ name ++
+                                                     " is not " ++ kind)
+                    am' = add_entry name am (index, v)
+                in (argl, am')
 
 
 -- |Most of the time, you just want the environment's

@@ -27,10 +27,14 @@ handling.
 The various 0.1.3.x point releases include bug fixes and
 various extra-minor enhancements. See the Git log.
 
-This is not what I set out to build.  It definitely could
-also use some work.  I use it all the time for writing
-little programs, though. I thought others might find it
-useful; I also have released other code that depends on it.
+The 0.1.4 release includes the ability to mix optional and
+required positional arguments.
+
+This library is not what I set out to build.  It definitely
+could also use some work.  However, I use it all the time
+for writing little programs. I thought others might find it
+useful, and I also have released other code that depends on
+it, so I put it out there.
 
 Have fun with it, and let me know if there are problems.
 

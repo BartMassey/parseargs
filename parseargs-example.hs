@@ -14,6 +14,7 @@ data Options =
     OptionFlag |
     OptionFlagInt |
     OptionFlagString |
+    OptionPreoptional |
     OptionFixed |
     OptionOptional
     deriving (Ord, Eq, Show)
@@ -34,6 +35,11 @@ argd = [ Arg { argIndex = OptionFlag,
                argAbbr = Nothing,
                argData = argDataDefaulted "test-value" ArgtypeInt 7,
                argDesc = "Test int flag" },
+         Arg { argIndex = OptionPreoptional,
+               argName = Nothing,
+               argAbbr = Nothing,
+               argData = argDataOptional "pre-optional" ArgtypeString,
+               argDesc = "Test optional string before fixed" },
          Arg { argIndex = OptionFixed,
                argName = Nothing,
                argAbbr = Nothing,
@@ -55,6 +61,9 @@ main = do
     Nothing -> return ()
   case (getArg args OptionFlagInt) of
     Just d -> putStrLn ("saw int " ++ (show (d::Int)))
+    Nothing -> return ()
+  case (getArg args OptionPreoptional) of
+    Just s -> putStrLn ("saw pre-optional " ++ s)
     Nothing -> return ()
   putStrLn ("saw fixed " ++ (fromJust (getArgString args OptionFixed)))
   case (getArg args OptionOptional) of
