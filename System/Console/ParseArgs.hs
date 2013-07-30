@@ -30,6 +30,9 @@ module System.Console.ParseArgs (
   Arg(..),
   Argtype(..), 
   ArgsComplete(..),
+  ArgsDash(..),
+  ArgsParseControl(..),
+  APCData(..),
   -- ** DataArg and its pseudo-constructors
   DataArg,
   argDataRequired, argDataOptional, argDataDefaulted,
@@ -317,6 +320,33 @@ data ArgsComplete = ArgsComplete         -- ^Any extraneous arguments
                                          -- permitted, and will be skipped,
                                          -- saved, and returned.
 
+-- |Whether to always treat an unknown argument beginning
+-- with \"-\" as an error, or to allow it to be used as a
+-- positional argument when possible.
+data ArgsDash = ArgsHardDash   -- ^If an argument begins with
+                               -- a \"-\", it will always be
+                               -- treated as an error unless
+                               -- it corresponds to a flag description.
+              | ArgsSoftDash   -- ^If an argument beginning with
+                               -- a \"-\" is unrecognized as a flag,
+                               -- treat it as a positional argument
+                               -- if possible. Otherwise it is an error.
+              deriving Eq
+
+-- |Record containing the collective parse control information.
+data ArgsParseControl = ArgsParseControl {
+  apcComplete :: ArgsComplete,
+  apcDash :: ArgsDash }
+
+class APCData a where
+  getAPCData :: a -> ArgsParseControl
+
+instance APCData ArgsParseControl where
+  getAPCData a = a
+
+instance APCData ArgsComplete where
+  getAPCData a = ArgsParseControl a ArgsHardDash
+
 -- |The iteration function is given a state and a list, and
 -- expected to produce a new state and list.  The function
 -- is again invoked with the resulting state and list.
@@ -338,19 +368,19 @@ parseError :: String    -- ^Usage message.
 parseError usage msg =
   throw (ParseArgsException usage msg)
 
--- |Given a description of the arguments, `parseArgs` produces
--- a map from the arguments to their \"values\" and some other
--- useful byproducts.  `parseArgs` requires that the argument
--- descriptions occur in the order 1) flag arguments, then 2)
--- positional arguments; otherwise
--- a runtime error will be thrown.
-parseArgs :: (Show a, Ord a) =>
-             ArgsComplete   -- ^Degree of completeness of parse.
+-- |Given a description of the arguments, `parseArgs`
+-- produces a map from the arguments to their \"values\" and
+-- some other useful byproducts.  `parseArgs` requires that
+-- the argument descriptions occur in the order 1) flag
+-- arguments, then 2) positional arguments; otherwise a
+-- runtime error will be thrown.
+parseArgs :: (Show a, Ord a, APCData b) =>
+             b              -- ^Configuration for parse.
           -> [ Arg a ]      -- ^Argument descriptions.
           -> String         -- ^Full program pathname.
           -> [ String ]     -- ^Incoming program argument list.
           -> Args a         -- ^Outgoing argument parse results.
-parseArgs acomplete argd pathname argv =
+parseArgs apcData argd pathname argv =
   runST (do
            check_argd
            let (flag_args, posn_args) = span arg_flag argd
@@ -415,7 +445,7 @@ parseArgs acomplete argd pathname argv =
             perhaps
               (not (null posn_args))
               (" " ++ unwords (map arg_string posn_args)) ++
-            (case acomplete of
+            (case apcComplete $ getAPCData apcData of
                ArgsComplete -> ""
                ArgsTrailing s -> " [--] [" ++ s ++ " ...]"
                ArgsInterspersed -> " ... [--] ...") ++ "\n"
@@ -429,29 +459,33 @@ parseArgs acomplete argd pathname argv =
     --- simple recursive-descent parser
     parse _ _ _ av@(_, _, []) [] = ([], av)
     parse usage _ _ av [] =
-        case acomplete of
+        case apcComplete $ getAPCData apcData of
           ArgsComplete -> parseError usage "unexpected extra arguments"
           _ -> ([], av)
     parse usage name_hash abbr_hash (am, posn, rest) av@(aa : aas) =
         case aa of
-          "--" -> case acomplete of
-                    ArgsComplete -> parseError usage
-                                      ("unexpected -- " ++
-                                      "(extra arguments not allowed)")
+          "--" -> case getAPCData apcData of
+                    ArgsParseControl ArgsComplete ArgsHardDash -> 
+                      parseError usage ("unexpected -- " ++
+                        "(extra arguments not allowed)")
                     _ -> ([], (am, posn, (rest ++ aas)))
-          s@('-' : '-' : name) ->
+          s@('-' : '-' : name) 
+            | isJust (Map.lookup name name_hash) ||
+              apcDash (getAPCData apcData) == ArgsHardDash ->
               case Map.lookup name name_hash of
                 Just ad -> 
                   let (args', am') = peel s ad aas in
                   (args', (am', posn, rest))
                 Nothing ->
-                  case acomplete of
-                    ArgsInterspersed ->
+                  case getAPCData apcData of
+                    ArgsParseControl ArgsInterspersed _ ->
                       (aas, (am, posn, rest ++ ["--" ++ name]))
                     _ -> 
                       parseError usage
                         ("unknown argument --" ++ name)
-          ('-' : abbr : abbrs) ->
+          ('-' : abbr : abbrs)
+            | isJust (Map.lookup abbr abbr_hash) ||
+              apcDash (getAPCData apcData) == ArgsHardDash ->
               case Map.lookup abbr abbr_hash of
                 Just ad ->
                   let (args', am') = peel ['-', abbr] ad aas
@@ -462,7 +496,7 @@ parseArgs acomplete argd pathname argv =
                                  ("bad internal '-' in argument " ++ aa)
                     _ -> (['-' : abbrs] ++ args', state')
                 Nothing ->
-                    case acomplete of
+                    case apcComplete $ getAPCData apcData of
                       ArgsInterspersed ->
                           (aas,
                            (am, posn, rest ++ ['-' : abbr : abbrs]))
@@ -517,14 +551,14 @@ parseArgs acomplete argd pathname argv =
 -- arguments and are willing to live in the IO monad.
 -- This version of `parseArgs` digs the pathname and arguments
 -- out of the system directly.
-parseArgsIO :: (Show a, Ord a) =>
-               ArgsComplete  -- ^Degree of completeness of parse.
+parseArgsIO :: (Show a, Ord a, APCData b) =>
+               b             -- ^Degree of completeness of parse.
             -> [ Arg a ]     -- ^Argument descriptions.
             -> IO (Args a)   -- ^Argument parse results.
-parseArgsIO acomplete argd = do
+parseArgsIO apcData argd = do
   argv <- getArgs
   pathname <- getProgName
-  return (parseArgs acomplete argd pathname argv)
+  return (parseArgs apcData argd pathname argv)
 
 
 -- |Check whether a given optional argument was supplied. Works on all types.
