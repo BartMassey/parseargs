@@ -2,7 +2,7 @@ Name: parseargs
 Build-Type: Simple
 Description: Parse command-line arguments
 -- Don't forget to bump the source-repository this below
-Version: 0.1.4
+Version: 0.1.5
 Cabal-Version: >= 1.6
 License: BSD3
 License-File: COPYING
@@ -30,4 +30,4 @@ Source-repository head
 Source-repository this
   Type:     git
   Location: git://github.com/BartMassey/parseargs.git
-  Tag:      v0.1.4
+  Tag:      v0.1.5
