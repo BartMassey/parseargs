@@ -52,7 +52,9 @@ argd = [ Arg { argIndex = OptionFlag,
                argDesc = "Test optional string" }]
 
 main = do
-  args <- parseArgsIO (ArgsTrailing "junk") argd
+  args <- parseArgsIO 
+            (ArgsParseControl (ArgsTrailing "junk") ArgsSoftDash) 
+            argd
   putStrLn "parse successful"
   when (gotArg args OptionFlag)
        (putStrLn "saw flag")
