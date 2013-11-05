@@ -30,6 +30,10 @@ various extra-minor enhancements. See the Git log.
 The 0.1.4 release includes the ability to mix optional and
 required positional arguments.
 
+The 0.1.5 release includes the "soft dash" option, giving
+the ability to allow positional arguments to begin with a
+dash if possible.
+
 This library is not what I set out to build.  It definitely
 could also use some work.  However, I use it all the time
 for writing little programs. I thought others might find it
