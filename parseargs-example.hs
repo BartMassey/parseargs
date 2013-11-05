@@ -1,12 +1,8 @@
 module Main
 where
 
-import Prelude hiding (catch)
-
-import Control.Exception
 import Control.Monad
 import Data.Maybe
-import System.Environment
 
 import System.Console.ParseArgs
 
@@ -51,24 +47,25 @@ argd = [ Arg { argIndex = OptionFlag,
                argData = argDataOptional "optional" ArgtypeString,
                argDesc = "Test optional string" }]
 
+main :: IO ()
 main = do
-  args <- parseArgsIO 
+  argv <- parseArgsIO 
             (ArgsParseControl (ArgsTrailing "junk") ArgsSoftDash) 
             argd
   putStrLn "parse successful"
-  when (gotArg args OptionFlag)
+  when (gotArg argv OptionFlag)
        (putStrLn "saw flag")
-  case (getArg args OptionFlagString) of
+  case (getArg argv OptionFlagString) of
     Just s -> putStrLn ("saw string " ++ s)
     Nothing -> return ()
-  case (getArg args OptionFlagInt) of
+  case (getArg argv OptionFlagInt) of
     Just d -> putStrLn ("saw int " ++ (show (d::Int)))
     Nothing -> return ()
-  case (getArg args OptionPreoptional) of
+  case (getArg argv OptionPreoptional) of
     Just s -> putStrLn ("saw pre-optional " ++ s)
     Nothing -> return ()
-  putStrLn ("saw fixed " ++ (fromJust (getArgString args OptionFixed)))
-  case (getArg args OptionOptional) of
+  putStrLn ("saw fixed " ++ (fromJust (getArgString argv OptionFixed)))
+  case (getArg argv OptionOptional) of
     Just s -> putStrLn ("saw optional " ++ s)
     Nothing -> return ()
-  putStrLn ("saw rest: " ++ show (argsRest args))
+  putStrLn ("saw rest: " ++ show (argsRest argv))
