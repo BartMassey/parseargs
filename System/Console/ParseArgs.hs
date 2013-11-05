@@ -244,6 +244,7 @@ arg_default_value arg@(Arg { argData = Just
 arg_default_value _ = Nothing
 
 -- |There's probably a better way to do this.
+perhaps :: Bool -> String -> String
 perhaps b s = if b then s else ""
 
 -- |Format the described argument as a string.
@@ -302,10 +303,10 @@ make_keymap :: (Ord a, Ord k, Show k) =>
                ((Arg a) -> Maybe k)   -- ^Mapping from argdesc to flag key.
             -> [ Arg a ]              -- ^List of argdesc.
             -> (Map.Map k (Arg a))    -- ^Map from key to argdesc.
-make_keymap f_field args =
+make_keymap f_field ads =
     (keymap_from_list .
      filter_keys .
-     map (\arg -> (f_field arg, arg))) args
+     map (\arg -> (f_field arg, arg))) ads
 
 -- |How \"sloppy\" the parse is.
 data ArgsComplete = ArgsComplete         -- ^Any extraneous arguments
@@ -356,7 +357,7 @@ exhaust :: (s -> [e] -> ([e], s))   -- ^Function to iterate.
         -> s                        -- ^Initial state.
         -> [e]                      -- ^Initial list.
         -> s                        -- ^Final state.
-exhaust f s [] = s
+exhaust _ s [] = s
 exhaust f s l =
   let (l', s') = f s l
   in exhaust f s' l'
@@ -388,9 +389,9 @@ parseArgs apcData argd pathname argv =
            let abbr_hash = make_keymap argAbbr flag_args
            let prog_name = baseName pathname
            let usage = make_usage_string prog_name
-           let (am, posn, rest) = exhaust (parse usage name_hash abbr_hash)
-                                  (Map.empty, posn_args, [])
-                                  argv
+           let (am, _, rest) = exhaust (parse usage name_hash abbr_hash)
+                                (Map.empty, posn_args, [])
+                                argv
            let required_args = filter (not . arg_optional) argd
            unless (and (map (check_present usage am) required_args))
                   (error "internal error")
@@ -415,7 +416,7 @@ parseArgs apcData argd pathname argv =
     check_argd :: ST s ()
     check_argd = do
       --- Order must be flags, then posn args
-      let (flags, posns) = span arg_flag argd
+      let (_, posns) = span arg_flag argd
       unless (all arg_posn posns)
              (argdesc_error "argument description mixes flags and positionals")
       --- No argument may be "nullary".
@@ -423,8 +424,6 @@ parseArgs apcData argd pathname argv =
            (argdesc_error "bogus 'nothing' argument")
       return ()
       where
-        arg_fixed_posn a = (arg_posn a) && (not (arg_optional a))
-        arg_opt_posn a = (arg_posn a) && (arg_optional a)
         arg_nullary (Arg { argName = Nothing,
                            argAbbr = Nothing,
                            argData = Nothing }) = True
@@ -451,10 +450,10 @@ parseArgs apcData argd pathname argv =
                ArgsInterspersed -> " ... [--] ...") ++ "\n"
         --- argument lines
         arg_lines = concatMap (arg_line n) argd where
-            arg_line n a =
+            arg_line na a =
                 let s = arg_string a in
                 "  " ++ s ++ 
-                replicate (n - (length s)) ' ' ++
+                replicate (na - (length s)) ' ' ++
                 "  " ++ argDesc a ++ "\n"
     --- simple recursive-descent parser
     parse _ _ _ av@(_, _, []) [] = ([], av)
@@ -505,7 +504,7 @@ parseArgs apcData argd pathname argv =
           _ ->
             case posn of
               (p : ps) ->
-                let (opt_posn, req_posn) = partition arg_optional posn in
+                let (_, req_posn) = partition arg_optional posn in
                 case length av - length req_posn of
                   n_extra | n_extra > 0 || (n_extra == 0 && arg_required p) ->
                     let (args', am') = peel (dataArgName $ fromJust $ 
@@ -520,12 +519,12 @@ parseArgs apcData argd pathname argv =
               case Map.member k m of
                 False -> Map.insert k a m
                 True -> parseError usage ("duplicate argument " ++ s)
-          peel name ad@(Arg { argData = Nothing, argIndex = index }) argl =
+          peel name (Arg { argData = Nothing, argIndex = index }) argl =
               let am' = add_entry name am (index, ArgvalFlag)
               in (argl, am')
           peel name (Arg { argData = Just (DataArg {}) }) [] =
               parseError usage (name ++ " is missing its argument")
-          peel name ad@(Arg { argData = 
+          peel name (Arg { argData = 
                                  Just (DataArg { dataArgArgtype = atype }),
                               argIndex = index })
               (a : argl) =
@@ -539,7 +538,7 @@ parseArgs apcData argd pathname argv =
                         where
                           read_arg constructor kind =
                             case reads a of
-                              [(v, "")] -> constructor v
+                              [(val, "")] -> constructor val
                               _ -> parseError usage ("argument " ++
                                                      a ++ " to " ++ name ++
                                                      " is not " ++ kind)
@@ -583,12 +582,13 @@ class ArgType b where
            => Args a    -- ^Parsed arguments.
            -> a         -- ^Index of argument to be retrieved.
            -> b   -- ^Argument value.
-    getRequiredArg args index =
-        case getArg args index of
+    getRequiredArg ads index =
+        case getArg ads index of
           Just v -> v
           Nothing -> error ("internal error: required argument "
                           ++ show index ++ "not supplied")
 
+getArgPrimitive :: Ord a => (Argval -> Maybe b) -> Args a -> a -> Maybe b
 getArgPrimitive decons (Args { args = ArgRecord am }) k =
   Map.lookup k am >>= decons
 
@@ -651,8 +651,8 @@ newtype ArgFileOpener = ArgFileOpener {
     }
 
 instance ArgType ArgFileOpener where
-    getArg args index =
-        getArg args index >>= 
+    getArg ads index =
+        getArg ads index >>= 
           (\s -> return $ ArgFileOpener { argFileOpener = openFile s })
 
 -- |[Deprecated] Treat the `String` value, if any, of the given argument as
@@ -663,8 +663,8 @@ getArgFile :: (Show a, Ord a) =>
            -> IOMode              -- ^IO mode the file should be opened in.
            -> IO (Maybe Handle)   -- ^Handle of opened file, if the argument
                                   -- was present.
-getArgFile args k m =
-  case getArg args k of
+getArgFile ads k m =
+  case getArg ads k of
     Just fo -> (do h <- argFileOpener fo m; return (Just h))
     Nothing -> return Nothing
 
@@ -679,8 +679,8 @@ getArgStdio :: (Show a, Ord a) =>
             -> IOMode      -- ^IO mode the file should be opened in.
                            -- Must not be `ReadWriteMode`.
             -> IO Handle   -- ^Appropriate file handle.
-getArgStdio args k m =
-    case getArg args k of
+getArgStdio ads k m =
+    case getArg ads k of
       Just s -> openFile s m
       Nothing ->
           case m of
@@ -707,4 +707,4 @@ baseName s =
 
 -- |Generate a usage error with the given supplementary message string.
 usageError :: (Ord a) => Args a -> String -> b
-usageError args msg = error (argsUsage args ++ "\n" ++ msg)
+usageError ads msg = error (argsUsage ads ++ "\n" ++ msg)
