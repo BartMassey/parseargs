@@ -339,6 +339,8 @@ data ArgsParseControl = ArgsParseControl {
   apcComplete :: ArgsComplete,
   apcDash :: ArgsDash }
 
+-- |Class for building parse control information,
+-- for backward compatibility.
 class APCData a where
   getAPCData :: a -> ArgsParseControl
 
@@ -350,9 +352,9 @@ instance APCData ArgsComplete where
 
 -- |The iteration function is given a state and a list, and
 -- expected to produce a new state and list.  The function
--- is again invoked with the resulting state and list.
--- When the function returns the empty list, `exhaust` returns
--- the final state produced.
+-- is again invoked with the resulting state and list.  When
+-- the supplied function returns the empty list, this
+-- function returns the final state produced.
 exhaust :: (s -> [e] -> ([e], s))   -- ^Function to iterate.
         -> s                        -- ^Initial state.
         -> [e]                      -- ^Initial list.

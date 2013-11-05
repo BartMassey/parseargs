@@ -36,6 +36,8 @@ dash if possible.
 
 The 0.1.5.1 release fixes some warnings and stuff.
 
+The 0.1.5.2 release fixes some missing documentation.
+
 This library is not what I set out to build.  It definitely
 could also use some work.  However, I use it all the time
 for writing little programs. I thought others might find it
