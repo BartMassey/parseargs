@@ -1,18 +1,9 @@
 {-# LANGUAGE FlexibleInstances, DeriveDataTypeable #-}
+-- Copyright © 2007 Bart Massey
+-- This program is licensed under the "3-clause ('new') BSD License".
+-- Please see the file COPYING in this distribution for license terms.
+
 -- Full-featured argument parsing library for Haskell programs
--- Bart Massey <bart@cs.pdx.edu>
-
--- Copyright © 2007-2010 Bart Massey
--- ALL RIGHTS RESERVED
-
--- You can redistribute and/or modify this library under the
--- terms of the "3-clause BSD LICENSE", as stated in the file
--- COPYING in the top-level directory of this distribution.
--- 
--- This library is distributed in the hope that it will be
--- useful, but WITHOUT ANY WARRANTY; without even the
--- implied warranty of MERCHANTABILITY or FITNESS FOR A
--- PARTICULAR PURPOSE.
 
 -- |This module supplies an argument parser.
 -- Given a description of type [`Arg`] of the legal

@@ -1,6 +1,5 @@
-# parseargs
-Command-line argument parsing for Haskell programs  
-Bart Massey <bart@cs.pdx.edu>
+# parseargs: Command-line argument parsing for Haskell programs
+Copyright © 2007 Bart Massey
 
 This library provides System.Console.Parseargs, a module to
 assist in argument parsing for Haskell stand-alone command
@@ -51,5 +50,6 @@ it, so I put it out there.
 
 Have fun with it, and let me know if there are problems.
 
-This code is released under a "3-clause BSD" license. Please
-see the file COPYING in this distribution for license terms.
+This program is licensed under the "3-clause ('new') BSD
+License".  Please see the file COPYING in this distribution
+for license terms.
