@@ -46,7 +46,7 @@ module System.Console.ParseArgs (
   -- |The argument parser returns an opaque map
   -- from argument index to parsed argument data
   -- (plus some convenience information).
-  ArgRecord, Args(..),
+  Args(argsUsage,argsProgName, argsRest),
   parseArgs, parseArgsIO,
   -- ** Using parse results
   -- |Query functions permit checking for the existence
@@ -172,8 +172,8 @@ data Argval = ArgvalFlag   -- ^For simple present vs not-present flags.
 -- |The type of the mapping from argument index to value.
 newtype ArgRecord a = ArgRecord (Map.Map a Argval)
 
--- |The data structure `parseArgs` produces.  The key
--- element is the `ArgRecord` `args`.
+-- |The data structure `parseArgs` produces. There is a hidden
+-- field that describes the actual parse.
 data (Ord a) => Args a =
     Args { args :: ArgRecord a      -- ^The argument map.
          , argsProgName :: String   -- ^Basename of 0th argument.

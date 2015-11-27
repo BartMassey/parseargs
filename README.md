@@ -38,6 +38,11 @@ The 0.1.5.1 release fixes some warnings and stuff.
 
 The 0.1.5.2 release fixes some missing documentation.
 
+The 0.2 release cleans up some namespace pollution by
+removing `ArgRecord` and the `args` accessor from the public
+namespace.  This allows the use of the name `args` by the
+user to describe program arguments.
+
 This library is not what I set out to build.  It definitely
 could also use some work.  However, I use it all the time
 for writing little programs. I thought others might find it

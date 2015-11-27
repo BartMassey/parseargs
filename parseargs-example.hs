@@ -49,23 +49,23 @@ argd = [ Arg { argIndex = OptionFlag,
 
 main :: IO ()
 main = do
-  argv <- parseArgsIO 
+  args <- parseArgsIO 
             (ArgsParseControl (ArgsTrailing "junk") ArgsSoftDash) 
             argd
   putStrLn "parse successful"
-  when (gotArg argv OptionFlag)
+  when (gotArg args OptionFlag)
        (putStrLn "saw flag")
-  case (getArg argv OptionFlagString) of
+  case (getArg args OptionFlagString) of
     Just s -> putStrLn ("saw string " ++ s)
     Nothing -> return ()
-  case (getArg argv OptionFlagInt) of
+  case (getArg args OptionFlagInt) of
     Just d -> putStrLn ("saw int " ++ (show (d::Int)))
     Nothing -> return ()
-  case (getArg argv OptionPreoptional) of
+  case (getArg args OptionPreoptional) of
     Just s -> putStrLn ("saw pre-optional " ++ s)
     Nothing -> return ()
-  putStrLn ("saw fixed " ++ (fromJust (getArgString argv OptionFixed)))
-  case (getArg argv OptionOptional) of
+  putStrLn ("saw fixed " ++ (fromJust (getArgString args OptionFixed)))
+  case (getArg args OptionOptional) of
     Just s -> putStrLn ("saw optional " ++ s)
     Nothing -> return ()
-  putStrLn ("saw rest: " ++ show (argsRest argv))
+  putStrLn ("saw rest: " ++ show (argsRest args))
