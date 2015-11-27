@@ -31,8 +31,8 @@ module System.Console.ParseArgs (
   Argtype(..), 
   ArgsComplete(..),
   ArgsDash(..),
-  ArgsParseControl(..),
   APCData(..),
+  ArgsParseControl(..),
   -- ** DataArg and its pseudo-constructors
   DataArg,
   argDataRequired, argDataOptional, argDataDefaulted,
@@ -336,7 +336,9 @@ data ArgsDash = ArgsHardDash   -- ^If an argument begins with
 
 -- |Record containing the collective parse control information.
 data ArgsParseControl = ArgsParseControl {
+  -- |Level of completeness of parse.
   apcComplete :: ArgsComplete,
+  -- |Handling of dashes in parse.
   apcDash :: ArgsDash }
 
 -- |Class for building parse control information,
@@ -574,16 +576,19 @@ gotArg (Args { args = ArgRecord am }) k =
 
 -- |Type of values that can be parsed by the argument parser.
 class ArgType b where
+
     -- |Fetch an argument's value if it is present.
     getArg :: (Show a, Ord a)
            => Args a    -- ^Parsed arguments.
            -> a         -- ^Index of argument to be retrieved.
            -> Maybe b   -- ^Argument value if present.
+
     -- |Fetch the value of a required argument.
     getRequiredArg :: (Show a, Ord a)
            => Args a    -- ^Parsed arguments.
            -> a         -- ^Index of argument to be retrieved.
            -> b   -- ^Argument value.
+
     getRequiredArg ads index =
         case getArg ads index of
           Just v -> v
