@@ -42,6 +42,9 @@ removing `ArgRecord` and the `args` accessor from the public
 namespace.  This allows the use of the name `args` by the
 user to describe program arguments.
 
+The 0.2.0.1 release cleans up a bunch of documentation nits
+and cleans up copyright notices and license information.
+
 This library is not what I set out to build.  It definitely
 could also use some work.  However, I use it all the time
 for writing little programs. I thought others might find it
