@@ -1,17 +1,25 @@
-{-# LANGUAGE FlexibleInstances, DeriveDataTypeable #-}
--- Copyright © 2007 Bart Massey
--- This program is licensed under the "3-clause ('new') BSD License".
--- Please see the file COPYING in this distribution for license terms.
+{-# LANGUAGE FlexibleInstances, DeriveDataTypeable, Safe #-}
+------------------------------------------------------------
+-- |
+-- Module      :  System.Console.ParseArgs
+-- Description :  Full-featured command-line argument parsing library.
+-- Copyright   :  (c) 2007 Bart Massey
+-- License     :  BSD-style (see the file COPYING)
+-- Maintainer  :  Bart Massey <bart.massey@gmail.com>
+-- Stability   :  stable
+-- Portability :  portable
+--
+-- `ParseArgs` is a full-featured command-line argument
+-- parsing library.
+--
+-- This module supplies an argument parser.  Given a
+-- description of type [`Arg`] of the legal arguments to the
+-- program, a list of argument strings, and a bit of extra
+-- information, the `parseArgs` function in this module
+-- returns an `Args` data structure suitable for querying
+-- using the provided functions `gotArg`, `getArg`, etc.
+------------------------------------------------------------
 
--- Full-featured argument parsing library for Haskell programs
-
--- |This module supplies an argument parser.
--- Given a description of type [`Arg`] of the legal
--- arguments to the program, a list of argument strings,
--- and a bit of extra information, the `parseArgs` function
--- in this module returns an
--- `Args` data structure suitable for querying using the
--- provided functions `gotArg`, `getArg`, etc.
 module System.Console.ParseArgs (
   -- * Describing allowed arguments
   -- |The argument parser requires a description of
@@ -37,7 +45,7 @@ module System.Console.ParseArgs (
   -- |The argument parser returns an opaque map
   -- from argument index to parsed argument data
   -- (plus some convenience information).
-  Args(argsUsage,argsProgName, argsRest),
+  Args(..),
   parseArgs, parseArgsIO,
   -- ** Using parse results
   -- |Query functions permit checking for the existence
@@ -55,7 +63,7 @@ where
 
 import Control.Exception
 import Control.Monad
-import Control.Monad.ST
+import Control.Monad.ST.Safe
 import Data.List
 import qualified Data.Map as Map
 import Data.Maybe
@@ -163,10 +171,12 @@ data Argval = ArgvalFlag   -- ^For simple present vs not-present flags.
 -- |The type of the mapping from argument index to value.
 newtype ArgRecord a = ArgRecord (Map.Map a Argval)
 
--- |The data structure `parseArgs` produces. There is a hidden
--- field that describes the actual parse.
+-- |The data structure `parseArgs` produces. There is a should-be-hidden
+-- field that describes the parse.
 data (Ord a) => Args a =
-    Args { args :: ArgRecord a      -- ^The argument map.
+    Args { __args :: ArgRecord a    -- ^The argument parse, only listed here
+                                    -- to work around a Haddock bug. See
+                                    -- <https://github.com/haskell/haddock/issues/456>.
          , argsProgName :: String   -- ^Basename of 0th argument.
          , argsUsage :: String      -- ^Full usage string.
          , argsRest :: [ String ]   -- ^Remaining unprocessed arguments.
@@ -391,7 +401,7 @@ parseArgs apcData argd pathname argv =
            unless (and (map (check_present usage am) required_args))
                   (error "internal error")
            let am' = foldl supply_defaults am argd
-           return (Args { args = ArgRecord am',
+           return (Args { __args = ArgRecord am',
                           argsProgName = prog_name,
                           argsUsage = usage,
                           argsRest = rest }))
@@ -560,7 +570,7 @@ gotArg :: (Ord a) =>
           Args a    -- ^Parsed arguments.
        -> a         -- ^Index of argument to be checked for.
        -> Bool      -- ^True if the arg was present.
-gotArg (Args { args = ArgRecord am }) k =
+gotArg (Args { __args = ArgRecord am }) k =
     case Map.lookup k am of
       Just _ -> True
       Nothing -> False
@@ -587,7 +597,7 @@ class ArgType b where
                           ++ show index ++ "not supplied")
 
 getArgPrimitive :: Ord a => (Argval -> Maybe b) -> Args a -> a -> Maybe b
-getArgPrimitive decons (Args { args = ArgRecord am }) k =
+getArgPrimitive decons (Args { __args = ArgRecord am }) k =
   Map.lookup k am >>= decons
 
 instance ArgType () where
