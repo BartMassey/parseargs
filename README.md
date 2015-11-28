@@ -47,6 +47,9 @@ and cleans up copyright notices and license information.
 
 The 0.2.0.2 release fixes the botched release of 0.2.0.1. Sigh.
 
+The 0.2.0.3 release fixes the missing `Args` constructor
+documentation of 0.2.0.2.
+
 This library is not what I set out to build.  It definitely
 could also use some work.  However, I use it all the time
 for writing little programs. I thought others might find it
