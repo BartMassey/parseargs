@@ -345,7 +345,8 @@ data ArgsParseControl = ArgsParseControl {
 -- |Class for building parse control information,
 -- for backward compatibility.
 class APCData a where
-  getAPCData :: a -> ArgsParseControl
+  getAPCData :: a -> ArgsParseControl  -- ^Build an 'ArgsParseControl'
+                                       -- structure from the given info.
 
 instance APCData ArgsParseControl where
   getAPCData a = a
