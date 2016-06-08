@@ -66,11 +66,7 @@ where
 
 import Control.Exception
 import Control.Monad
-#if __GLASGOW_HASKELL__ < 710
-import Control.Monad.ST.Safe
-#else
 import Control.Monad.ST
-#endif
 import Data.List
 import qualified Data.Map as Map
 import Data.Maybe
