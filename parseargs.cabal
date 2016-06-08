@@ -7,7 +7,7 @@ Build-Type: Simple
 Description: Parse command-line arguments
 -- Don't forget to bump the source-repository this below
 Version: 0.2.0.5
-Cabal-Version: >= 1.6
+Cabal-Version: >= 1.8
 License: BSD3
 License-File: COPYING
 Author: Bart Massey <bart@cs.pdx.edu>
