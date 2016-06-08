@@ -17,6 +17,7 @@ Homepage: http://github.com/BartMassey/parseargs
 Category: Console
 Synopsis: Full-featured command-line argument parsing library.
 Extra-Source-Files: README.md
+Tested-With: GHC >= 6 && < 8.1
 
 Library
   Build-Depends:   base < 5, containers < 1
