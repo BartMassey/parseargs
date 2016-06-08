@@ -1,4 +1,7 @@
-{-# LANGUAGE FlexibleInstances, DeriveDataTypeable, Safe, CPP #-}
+{-# LANGUAGE FlexibleInstances, DeriveDataTypeable, CPP #-}
+#if __GLASGOW_HASKELL__ > 720
+{-# LANGUAGE Safe #-}
+#endif
 ------------------------------------------------------------
 -- |
 -- Module      :  System.Console.ParseArgs
