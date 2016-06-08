@@ -1,0 +1,6 @@
+parse successful
+saw int 7
+saw pre-optional x
+saw fixed y
+saw optional z
+saw rest: []
