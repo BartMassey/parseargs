@@ -25,7 +25,7 @@ Library
   GHC-Options:     -Wall
 
 Executable parseargs-example
-  Build-Depends:   base < 5
+  Build-Depends:   base < 5, containers < 1
   Main-Is:         parseargs-example.hs
   Other-Modules:   System.Console.ParseArgs
   GHC-Options:     -Wall

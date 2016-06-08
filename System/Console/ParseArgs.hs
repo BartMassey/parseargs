@@ -605,10 +605,18 @@ getArgPrimitive decons (Args { __args = ArgRecord am }) k =
   Map.lookup k am >>= decons
 
 instance ArgType () where
-  getArg = getArgPrimitive (\ArgvalFlag -> return ())
+  getArg =
+      getArgPrimitive flagArg
+      where
+        flagArg ArgvalFlag = return ()
+        flagArg _ = error "internal error: flag arg at wrong type"
 
 instance ArgType ([] Char) where
-  getArg = getArgPrimitive (\(ArgvalString s) -> return s)
+  getArg =
+      getArgPrimitive stringArg
+      where
+        stringArg (ArgvalString s) = return s
+        stringArg _ = error "internal error: string arg at wrong type"
 
 -- |[Deprecated]  Return the `String` value, if any, of the given argument.
 getArgString :: (Show a, Ord a) =>
@@ -618,7 +626,11 @@ getArgString :: (Show a, Ord a) =>
 getArgString = getArg
 
 instance ArgType Integer where
-  getArg = getArgPrimitive (\(ArgvalInteger i) -> return i)
+  getArg =
+      getArgPrimitive integerArg
+      where
+        integerArg (ArgvalInteger i) = return i
+        integerArg _ = error "internal error: integer arg at wrong type"
 
 -- |[Deprecated] Return the `Integer` value, if any, of the given argument.
 getArgInteger :: (Show a, Ord a) =>
@@ -628,7 +640,11 @@ getArgInteger :: (Show a, Ord a) =>
 getArgInteger = getArg
 
 instance ArgType Int where
-  getArg = getArgPrimitive (\(ArgvalInt i) -> return i)
+  getArg =
+      getArgPrimitive intArg
+      where
+        intArg (ArgvalInt i) = return i
+        intArg _ = error "internal error: int arg at wrong type"
 
 -- |[Deprecated] Return the `Int` value, if any, of the given argument.
 getArgInt :: (Show a, Ord a) =>
@@ -638,7 +654,11 @@ getArgInt :: (Show a, Ord a) =>
 getArgInt = getArg
 
 instance ArgType Double where
-  getArg = getArgPrimitive (\(ArgvalDouble i) -> return i)
+  getArg =
+      getArgPrimitive doubleArg
+      where
+        doubleArg (ArgvalDouble d) = return d
+        doubleArg _ = error "internal error: double arg at wrong type"
 
 -- |[Deprecated] Return the `Double` value, if any, of the given argument.
 getArgDouble :: (Show a, Ord a) =>
@@ -648,7 +668,11 @@ getArgDouble :: (Show a, Ord a) =>
 getArgDouble = getArg
 
 instance ArgType Float where
-  getArg = getArgPrimitive (\(ArgvalFloat i) -> return i)
+  getArg =
+      getArgPrimitive floatArg
+      where
+        floatArg (ArgvalFloat f) = return f
+        floatArg _ = error "internal error: float arg at wrong type"
 
 -- |[Deprecated] Return the `Float` value, if any, of the given argument.
 getArgFloat :: (Show a, Ord a) =>
