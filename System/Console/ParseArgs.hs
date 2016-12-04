@@ -303,10 +303,10 @@ keymap_from_list l =
                                    (show k))
 
 -- |Make a keymap for looking up a flag argument.
-make_keymap :: (Ord a, Ord k, Show k) =>
-               ((Arg a) -> Maybe k)   -- ^Mapping from argdesc to flag key.
-            -> [ Arg a ]              -- ^List of argdesc.
-            -> (Map.Map k (Arg a))    -- ^Map from key to argdesc.
+make_keymap :: (Ord k, Show k) =>
+               (Arg a -> Maybe k)   -- ^Mapping from argdesc to flag key.
+            -> [Arg a]              -- ^List of argdesc.
+            -> Map.Map k (Arg a)    -- ^Map from key to argdesc.
 make_keymap f_field ads =
     (keymap_from_list .
      filter_keys .
