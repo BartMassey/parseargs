@@ -1,7 +1,7 @@
 #!/bin/sh
 # Copyright © 2016 Bart Massey
 # Run simple parseargs tests
-PA=dist/build/parseargs-example/parseargs-example
+PA=parseargs-example
 TMP=/tmp/test-parseargs-$$
 trap "rm -f $TMP" 0 1 2 3 15
 for f in tests/*.in

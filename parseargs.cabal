@@ -34,6 +34,7 @@ Test-Suite test-parseargs
   Type:            exitcode-stdio-1.0
   Main-Is:         test-parseargs.hs
   build-depends:   base < 5, process < 2
+  build-tool-depends: parseargs:parseargs-example
 
 Source-repository head
   Type:     git
