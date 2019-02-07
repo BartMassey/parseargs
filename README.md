@@ -62,6 +62,9 @@ documentation of 0.2.0.2.
 
 * The 0.2.0.4 release suppresses a GHC 7.10 warning for `Control.Monad.Safe`.
 
+* Subsequent releases are maintenance for new GHC, Cabal and
+  Stackage stuff.
+
 ## License
 
 This program is licensed under the "3-clause ('new') BSD
