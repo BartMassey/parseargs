@@ -17,7 +17,7 @@ Homepage: http://github.com/BartMassey/parseargs
 Category: Console
 Synopsis: Parse command-line arguments
 Extra-Source-Files: README.md test-parseargs.sh tests/*.in tests/*.out
-Tested-With: GHC >= 6 && < 8.1
+Tested-With: GHC >= 6 && <= 8.4.4
 
 Library
   Build-Depends:   base < 5, containers < 1
