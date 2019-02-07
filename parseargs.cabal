@@ -43,4 +43,4 @@ Source-repository head
 Source-repository this
   Type:     git
   Location: git://github.com/BartMassey/parseargs.git
-  Tag:      v0.2.0.7
+  Tag:      v0.2.0.8
